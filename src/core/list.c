@@ -8,7 +8,7 @@
 
 static inline struct ListNode* _list_node_new(void* data, struct ListNode* prev, struct ListNode* next)
 {
-    struct ListNode* node = malloc(sizeof(struct ListNode*));
+    struct ListNode* node = malloc(sizeof(struct ListNode));
     node->data = data;
     node->prev = prev;
     node->next = next;
