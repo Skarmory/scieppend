@@ -21,8 +21,8 @@ release: $(NAME)
 $(NAME): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(NAME) $(LDFLAGS)
 
-%.o: %.cpp
-	$(CC) -MMD $(CPPFLAGS) -c $< -o $@
+%.o: %.c
+	$(CC) -MMD $(CFLAGS) -c $< -o $@
 
 clean:
 	@rm -f $(OBJS)
