@@ -10,12 +10,12 @@ DEPS=$(SRCS:.c=.d)
 
 .PHONY: clean default fullclean debug release
 
-default:
-	@echo "Specify a target. Options: debug, release"
+default: release
 
-debug: CFLAGS += -g -DDEBUG
-debug: release
+debug: CFLAGS+=-g -DDEBUG
+debug: $(NAME)
 
+release: CFLAGS+=-Ofast
 release: $(NAME)
 
 $(NAME): $(OBJS)
