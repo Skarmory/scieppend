@@ -84,7 +84,7 @@ enum ParserCode parser_parse(struct Parser* parser, char* line);
 /* Parse a given file.
  * Return true if no parse errors encountered during parsing.
  */
-bool parser_parser_file(struct Parser* parser, const char* filename);
+bool parser_parse_file(struct Parser* parser, const char* filename);
 
 /* Set the active data being parsed into.
  * This should be called by the user from the initial parsing callback.
