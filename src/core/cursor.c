@@ -1,4 +1,4 @@
-#include "core/cursor.h"
+#include "scieppend/core/cursor.h"
 
 void cursor_get_offset(enum KeyCode input, int* x_off, int* y_off)
 {

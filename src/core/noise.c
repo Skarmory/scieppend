@@ -1,6 +1,6 @@
-#include "core/noise.h"
+#include "scieppend/core/noise.h"
 
-#include "core/log.h"
+#include "scieppend/core/log.h"
 #include <math.h>
 
 // CONSTS

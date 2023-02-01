@@ -1,8 +1,7 @@
 #ifndef SCIEPPEND_CORE_POISSON_DISK_H
 #define SCIEPPEND_CORE_POISSON_DISK_H
 
-#include "core/list.h"
-
+struct List;
 struct RNG;
 
 /* Creates a poisson disk sample of points.

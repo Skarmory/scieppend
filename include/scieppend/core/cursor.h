@@ -1,7 +1,7 @@
 #ifndef SCIEPPEND_CORE_CURSOR_H
 #define SCIEPPEND_CORE_CURSOR_H
 
-#include "core/input_keycodes.h"
+#include "scieppend/core/input_keycodes.h"
 
 struct Cursor
 {

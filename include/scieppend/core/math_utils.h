@@ -15,7 +15,7 @@ float log_base(int x, int base);
 
 /* Map value from one range to another.
  * Value is transformed to a proportion of the old range and that proportion is figured out for the
- * new range. 
+ * new range.
  * e.g. map 5.0 in range (0.0 - 10.0) to range (30.0 to 50.0f) = 40.0f
  */
 float map_range(float value, float old_low, float old_high, float new_low, float new_high);

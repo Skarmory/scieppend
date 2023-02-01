@@ -22,14 +22,14 @@ struct RNG* rng_new(int seed);
 
 /* Free the given RNG.
  */
-void        rng_free(struct RNG* rng);
+void rng_free(struct RNG* rng);
 
 /* Get random int.
  */
-int         rng_get(struct RNG* rng);
+int rng_get(struct RNG* rng);
 
 /* Get random float.
  */
-float       rng_get_float(struct RNG* rng);
+float rng_get_float(struct RNG* rng);
 
 #endif

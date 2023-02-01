@@ -1,8 +1,8 @@
-#include "core/poisson_disk.h"
+#include "scieppend/core/poisson_disk.h"
 
-#include "core/geom.h"
-#include "core/log.h"
-#include "core/rng.h"
+#include "scieppend/core/geom.h"
+#include "scieppend/core/log.h"
+#include "scieppend/core/rng.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

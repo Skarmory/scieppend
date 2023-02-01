@@ -1,8 +1,8 @@
-#include "core/term.h"
+#include "scieppend/core/term.h"
 
-#include "core/bit_flags.h"
-#include "core/colour.h"
-#include "core/log.h"
+#include "scieppend/core/bit_flags.h"
+#include "scieppend/core/colour.h"
+#include "scieppend/core/log.h"
 
 #include <sys/ioctl.h>
 #include <signal.h>

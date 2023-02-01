@@ -19,7 +19,7 @@
  * colour:9;100;27
  */
 
-#include "core/list.h"
+#include "scieppend/core/list.h"
 
 #include <stdbool.h>
 

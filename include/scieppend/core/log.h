@@ -1,7 +1,7 @@
 #ifndef SCIEPPEND_CORE_LOG_H
 #define SCIEPPEND_CORE_LOG_H
 
-#include "core/bit_flags.h"
+#include "scieppend/core/bit_flags.h"
 
 enum LogChannelID
 {

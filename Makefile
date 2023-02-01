@@ -1,6 +1,6 @@
 CC=gcc -std=c2x
 CFLAGS=-fPIC -shared -Wall -Wextra -Wpedantic
-CFLAGS+=-Iinclude/scieppend
+CFLAGS+=-Iinclude
 LDFLAGS=
 NAME=libscieppend.so
 

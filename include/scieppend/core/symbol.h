@@ -1,7 +1,7 @@
 #ifndef SCIEPPEND_CORE_SYMBOL_H
 #define SCIEPPEND_CORE_SYMBOL_H
 
-#include "core/colour.h"
+#include "scieppend/core/colour.h"
 
 /* Defines an ascii symbol for the terminal representation.
  * TODO: This will need to move elsewhere at some point as want to support multiple display options.

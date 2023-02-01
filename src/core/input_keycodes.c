@@ -1,6 +1,6 @@
-#include "core/input_keycodes.h"
+#include "scieppend/core/input_keycodes.h"
 
-#include "core/term.h"
+#include "scieppend/core/term.h"
 #include <string.h>
 
 // CONSTS

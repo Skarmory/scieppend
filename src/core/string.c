@@ -1,4 +1,4 @@
-#include "core/string.h"
+#include "scieppend/core/string.h"
 
 #include <stdarg.h>
 #include <string.h>

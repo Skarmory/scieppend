@@ -1,7 +1,7 @@
-#include "core/tasking.h"
+#include "scieppend/core/tasking.h"
 
-#include "core/list.h"
-#include "core/log.h"
+#include "scieppend/core/list.h"
+#include "scieppend/core/log.h"
 
 #include <stdio.h>
 #include <stdlib.h>

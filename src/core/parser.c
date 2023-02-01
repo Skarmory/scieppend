@@ -1,6 +1,6 @@
-#include "core/parser.h"
+#include "scieppend/core/parser.h"
 
-#include "core/log.h"
+#include "scieppend/core/log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

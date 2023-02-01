@@ -1,6 +1,6 @@
-#include "core/geom.h"
+#include "scieppend/core/geom.h"
 
-#include "core/log.h"
+#include "scieppend/core/log.h"
 #include <math.h>
 #include <stdlib.h>
 

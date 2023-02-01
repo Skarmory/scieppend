@@ -1,4 +1,4 @@
-#include "core/rng.h"
+#include "scieppend/core/rng.h"
 
 #include <limits.h>
 #include <stdlib.h>

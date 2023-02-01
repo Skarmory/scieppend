@@ -1,4 +1,4 @@
-#include "core/colour.h"
+#include "scieppend/core/colour.h"
 
 // INTERNAL CONSTS
 

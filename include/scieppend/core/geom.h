@@ -1,7 +1,7 @@
 #ifndef SCIEPPEND_CORE_GEOM_H
 #define SCIEPPEND_CORE_GEOM_H
 
-#include "core/list.h"
+#include "scieppend/core/list.h"
 
 #include <stdbool.h>
 

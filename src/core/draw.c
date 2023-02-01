@@ -1,8 +1,8 @@
-#include "core/draw.h"
+#include "scieppend/core/draw.h"
 
-#include "core/log.h"
-#include "core/screen.h"
-#include "core/term.h"
+#include "scieppend/core/log.h"
+#include "scieppend/core/screen.h"
+#include "scieppend/core/term.h"
 
 #include <signal.h>
 #include <stdbool.h>
