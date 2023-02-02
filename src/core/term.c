@@ -169,12 +169,12 @@ static inline bool _should_redraw(struct VTermSymbol* symbol, char new_symbol, s
         return true;
     }
 
-    if(symbol->fg.r != new_fg->r || symbol->fg.g != new_fg->g || symbol->fg.b != new_fg->b)
+    if(new_fg && !colour_equal(&symbol->fg, new_fg))
     {
         return true;
     }
 
-    if(symbol->bg.r != new_bg->r || symbol->bg.g != new_bg->g || symbol->bg.b != new_bg->b)
+    if(new_bg && !colour_equal(&symbol->bg, new_bg))
     {
         return true;
     }
