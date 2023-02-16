@@ -21,6 +21,7 @@
  *       match the cache which they are passed to.
  */
 
+typedef void(*alloc_function)(void*, void*);
 typedef void(*free_function)(void*);
 
 extern const int C_NULL_CACHE_HANDLE;
@@ -29,7 +30,7 @@ struct Cache;
 
 /* Create a new cache with given capacity and optional destructor for elements.
  */
-struct Cache* cache_new(int item_size, int capacity, free_function free_func);
+struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, free_function free_func);
 
 /* Frees all the elements, calling the destructor if specified, then frees the cache.
  */
@@ -60,6 +61,7 @@ bool cache_stale_handle(struct Cache* cache, int handle);
 
 /* Adds an element to the cache and returns a handle to access it.
  * See allocation process at top of this file for further info.
+ * Copies the item.
  */
 int cache_add(struct Cache* cache, void* item);
 

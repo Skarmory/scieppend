@@ -29,7 +29,8 @@ struct Cache
     int   item_size;
     int   capacity;
     int   free_head;
-    free_function free_func;
+    alloc_function alloc_func;
+    free_function  free_func;
 };
 
 // INTERNAL FUNCS
@@ -213,18 +214,18 @@ static bool _check_handle(struct Cache* cache, int handle)
 
 // EXTERNAL FUNCS
 
-struct Cache* cache_new(int item_size, int capacity, free_function free_func)
+struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, free_function free_func)
 {
     assert(capacity <= C_MAX_CAPACITY);
 
     struct Cache* cache = calloc(1, sizeof(struct Cache));
-
-    cache->items     = calloc(capacity, item_size);
-    cache->handles   = malloc(sizeof(int) * capacity);
-    cache->item_size = item_size;
-    cache->capacity  = capacity;
-    cache->free_head = C_NULL_CACHE_HANDLE;
-    cache->free_func = free_func;
+    cache->items      = calloc(capacity, item_size);
+    cache->handles    = malloc(sizeof(int) * capacity);
+    cache->item_size  = item_size;
+    cache->capacity   = capacity;
+    cache->free_head  = C_NULL_CACHE_HANDLE;
+    cache->alloc_func = alloc_func;
+    cache->free_func  = free_func;
 
     memset(cache->handles, C_NULL_CACHE_HANDLE, sizeof(int) * capacity);
 
