@@ -65,6 +65,10 @@ bool cache_stale_handle(struct Cache* cache, int handle);
  */
 int cache_add(struct Cache* cache, void* item);
 
+/* Constructs an item with the given args and returns a handle to it.
+ */
+int cache_emplace(struct Cache* cache, void* args);
+
 /* Removes an element from the cache.
  */
 void cache_remove(struct Cache* cache, int handle);
