@@ -1,5 +1,5 @@
 #include "scieppend/test/test.h"
-#include "scieppend/test/core/array_test.h"
+#include "scieppend/test/core/array.h"
 #include "scieppend/test/core/stack_array.h"
 
 int main(int argc, char** argv)
