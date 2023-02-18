@@ -33,6 +33,12 @@ struct Cache
     free_function  free_func;
 };
 
+struct CacheIt
+{
+    struct Cache* cache;
+    int           current_idx;
+};
+
 // INTERNAL FUNCS
 
 // Bit logic to make our key and index into a handle
@@ -352,4 +358,48 @@ void* cache_get(struct Cache* cache, int handle)
     }
 
     return _get_item(cache, handle);
+}
+
+// ----- CACHE ITERATOR -----
+
+struct CacheIt cache_begin(struct Cache* cache)
+{
+    struct CacheIt it;
+    it.cache = cache;
+    it.current_idx = 0;
+    cache_it_next(&it);
+    return it;
+}
+
+struct CacheIt cache_end(struct Cache* cache)
+{
+    struct CacheIt it;
+    it.cache = cache;
+    it.current_idx = cache->max_used;
+    return it;
+}
+
+struct CacheIt* cache_it_next(struct CacheIt* it)
+{
+    while(it->current_idx != it->cache->max_used)
+    {
+        if(_check_valid(it->cache->handles[it->current_idx]))
+        {
+            return it;
+        }
+
+        ++it->current_idx;
+    }
+    return it;
+}
+
+bool cache_it_eq(struct CacheIt* lhs, struct CacheIt* rhs)
+{
+    return (lhs->current_idx == rhs->current_idx &&
+            lhs->cache       == rhs->cache);
+}
+
+void* cache_it_get(struct CacheIt* it)
+{
+    return cache_get(it.cache, it.cache->handles[it.current_idx]);
 }

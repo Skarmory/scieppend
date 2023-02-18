@@ -28,6 +28,8 @@ extern const int C_NULL_CACHE_HANDLE;
 
 struct Cache;
 
+struct CacheIt;
+
 /* Create a new cache with given capacity and optional destructor for elements.
  */
 struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, free_function free_func);
@@ -76,5 +78,27 @@ void cache_remove(struct Cache* cache, int handle);
 /* Returns the element a handle points to.
  */
 void* cache_get(struct Cache* cache, int handle);
+
+// CACHE ITERATOR
+
+/* Make an iterator to the first item in the cache.
+ */
+struct CacheIt cache_begin(struct Cache* cache);
+
+/* Make an interator for the past the elements in the cache.
+ */
+struct CacheIt cache_end(struct Cache* cache);
+
+/* Get the next element in the cache.
+ */
+struct CacheIt* cache_it_next(struct CacheIt* it);
+
+/* Check if two iterators are equal.
+ */
+bool cache_it_eq(struct CacheIt* lhs, struct CacheIt* rhs);
+
+/* Get value from the cache iterator.
+ */
+void* cache_it_get(struct CacheIt* it);
 
 #endif
