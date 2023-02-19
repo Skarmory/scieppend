@@ -28,7 +28,11 @@ extern const int C_NULL_CACHE_HANDLE;
 
 struct Cache;
 
-struct CacheIt;
+struct CacheIt
+{
+    struct Cache* cache;
+    int           current_idx;
+};
 
 /* Create a new cache with given capacity and optional destructor for elements.
  */
@@ -91,14 +95,14 @@ struct CacheIt cache_end(struct Cache* cache);
 
 /* Get the next element in the cache.
  */
-struct CacheIt* cache_it_next(struct CacheIt* it);
+struct CacheIt cache_it_next(struct CacheIt it);
 
 /* Check if two iterators are equal.
  */
-bool cache_it_eq(struct CacheIt* lhs, struct CacheIt* rhs);
+bool cache_it_eq(struct CacheIt lhs, struct CacheIt rhs);
 
 /* Get value from the cache iterator.
  */
-void* cache_it_get(struct CacheIt* it);
+void* cache_it_get(struct CacheIt it);
 
 #endif
