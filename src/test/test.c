@@ -6,8 +6,8 @@
 
 #define C_MSG_LENGTH 256
 
-static const char* C_SUCCESS_STR = "success";
-static const char* C_FAILURE_STR = "failure";
+static const char* C_SUCCESS_STR = "SUCCESS";
+static const char* C_FAILURE_STR = "FAILURE";
 
 static struct
 {
@@ -88,54 +88,36 @@ test_assert_equal_char_buffer_fail:
 
 bool test_assert_equal_int(const int expect, const int actual)
 {
-    _print("Test integer equal\n");
-    _push_indent();
-    _print("Expect: %d\n", expect);
-    _print("Actual: %d\n", actual);
-    _push_indent();
     bool success = expect == actual;
-    _pop_indent();
-    _pop_indent();
+    _print("Test integer equal: expect \"%d\", actual \"%d\"\t%s\n", expect, actual, _success_str(success));
     return success;
 }
 
 bool test_assert_equal_bool(const bool expect, const bool actual)
 {
-    _print("Test bool equal\n");
-    _push_indent();
-    _print("Expect: %s\n", expect ? "true" : "false");
-    _print("Actual: %s\n", actual ? "true" : "false");
-    _push_indent();
     bool success = expect == actual;
-    _pop_indent();
-    _pop_indent();
+    _print("Test bool equal: expect \"%s\", actual: \"%s\"\t%s\n", expect ? "true" : "false", actual ? "true" : "false", _success_str(success));
     return success;
 }
 
 bool test_assert_equal_float(const float expect, const float actual)
 {
     bool success = (expect == actual);
-    _push_indent();
     _print("Test float equal: expect \"%f\", actual \"%f\"\t%s\n", expect, actual, _success_str(success));
-    _pop_indent();
     return success;
 }
 
 bool test_assert_not_null(void* value)
 {
-    _print("Test pointer not null\n");
-    _push_indent();
     bool success = value != NULL;
-    _pop_indent();
+    _print("Test pointer not null\t%s\n", _success_str(success));
     return success;
 }
 
 bool test_assert_null(void* value)
 {
     _print("Test pointer is null\n");
-    _push_indent();
     bool success = value == NULL;
-    _pop_indent();
     return success;
 }
 
