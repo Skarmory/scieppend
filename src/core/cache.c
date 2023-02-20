@@ -18,21 +18,6 @@ static const int C_MAX_CAPACITY    = C_IDX_MASK - 1;
 
 const int C_NULL_CACHE_HANDLE = 0xffffffff;
 
-// STRUCTS
-
-struct Cache
-{
-    void* items;
-    int*  handles;
-    int   current_used;
-    int   max_used;
-    int   item_size;
-    int   capacity;
-    int   free_head;
-    alloc_function alloc_func;
-    free_function  free_func;
-};
-
 // INTERNAL FUNCS
 
 // Bit logic to make our key and index into a handle

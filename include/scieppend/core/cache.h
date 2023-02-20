@@ -26,7 +26,18 @@ typedef void(*free_function)(void*);
 
 extern const int C_NULL_CACHE_HANDLE;
 
-struct Cache;
+struct Cache
+{
+    void* items;
+    int*  handles;
+    int   current_used;
+    int   max_used;
+    int   item_size;
+    int   capacity;
+    int   free_head;
+    alloc_function alloc_func;
+    free_function  free_func;
+};
 
 struct CacheIt
 {
