@@ -38,6 +38,10 @@ struct CacheIt
  */
 struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, free_function free_func);
 
+/* Constructs a new cache in-place.
+ */
+void cache_init(struct Cache* cache, int item_size, int capacity, alloc_function alloc_func, free_function free_func);
+
 /* Frees all the elements, calling the destructor if specified, then frees the cache.
  */
 void cache_free(struct Cache* cache);

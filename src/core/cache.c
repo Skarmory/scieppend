@@ -227,6 +227,13 @@ struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, 
     assert(capacity <= C_MAX_CAPACITY);
 
     struct Cache* cache = calloc(1, sizeof(struct Cache));
+    cache_init(cache, item_size, capacity, alloc_func, free_func);
+
+    return cache;
+}
+
+void cache_init(struct Cache* cache, int item_size, int capacity, alloc_function alloc_func, free_function free_func)
+{
     cache->items      = calloc(capacity, item_size);
     cache->handles    = malloc(sizeof(int) * capacity);
     cache->item_size  = item_size;
@@ -236,8 +243,6 @@ struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, 
     cache->free_func  = free_func ? free_func : &_null_free;
 
     memset(cache->handles, C_NULL_CACHE_HANDLE, sizeof(int) * capacity);
-
-    return cache;
 }
 
 void cache_free(struct Cache* cache)
