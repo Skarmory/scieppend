@@ -10,12 +10,6 @@ typedef int EntityHandle;
 typedef int ComponentHandle;
 typedef int ComponentTypeHandle;
 
-//struct Component
-//{
-//    int id;
-//    int type_id;
-//};
-
 struct Entity
 {
     EntityHandle id;
@@ -27,7 +21,7 @@ struct System
     struct Array* entities;
 };
 
-typedef void(*system_update_func)(struct System*);
+typedef void(*system_update_function)(struct System*);
 
 /* Initialise the internal ECS containers.
  */
@@ -37,9 +31,13 @@ void ecs_init(void);
  */
 void ecs_uninit(void);
 
-/* Creates an entity internall and returns a handle to it.
+/* Creates an entity and returns a handle to it.
  */
 EntityHandle entity_create(void);
+
+/* Destroys an entity, removes all its components, and notifies all interested systems.
+ */
+void entity_destroy(EntityHandle id);
 
 /* Adds a new component of the given type to the entity of given id.
  */
@@ -55,18 +53,9 @@ void entity_remove_component(EntityHandle id, ComponentTypeHandle component_type
  */
 ComponentTypeHandle component_type_register(int size_bytes);
 
-/* Creates a component of given type.
- * Returns struct holding the component's id and its type.
- */
-//struct Component component_create(ComponentTypeHandle type_id);
-
-/* Destroy a component.
- */
-//void component_destroy(struct Component* component);
-
 /* Internally creates a system that will call the given function every update cycle.
  */
-void system_register(system_update_func update_func);
+void system_register(system_update_function update_func);
 
 /* Iterate over all registered systems and calls their update functions.
  */

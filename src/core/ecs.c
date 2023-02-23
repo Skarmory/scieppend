@@ -16,8 +16,8 @@ struct _Component
 
 struct _System
 {
-    struct System      external;
-    system_update_func update_func;
+    struct System          external;
+    system_update_function update_func;
 };
 
 struct ComponentCacheNewArgs
@@ -26,6 +26,11 @@ struct ComponentCacheNewArgs
     int capacity;
     alloc_function alloc_func;
     free_function  free_func;
+};
+
+struct SystemNewArgs
+{
+    system_update_function update_func;
 };
 
 static struct ECS
@@ -47,7 +52,21 @@ static void _component_cache_alloc(void* new_cache_vp, void* new_cache_args_vp)
 static void _component_cache_free(void* cache_vp)
 {
     struct Cache* cache = cache_vp;
-    cache_free(cache);
+    cache_uninit(cache);
+}
+
+static void _system_alloc(void* new_system_vp, void* new_system_args_vp)
+{
+    struct _System* new_system = new_system_vp;
+    struct SystemNewArgs* args = new_system_args_vp;
+    new_system->update_func        = args->update_func;
+    new_system->external.entities  = array_new(sizeof(EntityHandle), 32, NULL);
+}
+
+static void _system_free(void* system_vp)
+{
+    struct _System* system = system_vp;
+    array_free(system->external.entities);
 }
 
 // EXTERNAL FUNCS
@@ -55,8 +74,8 @@ static void _component_cache_free(void* cache_vp)
 void ecs_init(void)
 {
     _ecs.entities = cache_new(sizeof(struct Entity), 1024, NULL, NULL);
-    _ecs.component_caches = cache_new(sizeof(void*), 1024, _component_cache_alloc, _component_cache_free);
-    _ecs.systems = cache_new(sizeof(struct _System), 1024, NULL, NULL);
+    _ecs.component_caches = cache_new(sizeof(struct Cache), 1024, _component_cache_alloc, _component_cache_free);
+    _ecs.systems = cache_new(sizeof(struct _System), 1024, _system_alloc, _system_free);
 }
 
 void ecs_uninit(void)
@@ -73,6 +92,23 @@ EntityHandle entity_create(void)
     entity->id = handle;
     entity->components = array_new(sizeof(struct _Component), 8, NULL);
     return handle;
+}
+
+void entity_destroy(EntityHandle id)
+{
+    struct Entity* entity = cache_get(_ecs.entities, id);
+
+     //TODO notify systems here
+
+    for(int i = 0; i < array_count(entity->components); ++i)
+    {
+        struct _Component* component = array_get(entity->components, i);
+        struct Cache* component_cache = cache_get(_ecs.component_caches, component->type_id);
+        cache_remove(component_cache, component->id);
+    }
+
+    array_free(entity->components);
+    cache_remove(_ecs.entities, id);
 }
 
 void entity_add_component(EntityHandle id, ComponentTypeHandle component_type_id)
@@ -108,7 +144,7 @@ void entity_remove_component(EntityHandle id, ComponentTypeHandle component_type
         {
             struct Cache* component_cache = cache_get(_ecs.component_caches, component_type_id);
             cache_remove(component_cache, check_this->id);
-            array_remove(entity->components, i);
+            array_remove_at(entity->components, i);
         }
     }
 }
@@ -125,12 +161,11 @@ ComponentTypeHandle component_type_register(int size_bytes)
     return type_id;
 }
 
-void system_create(system_update_func update_func)
+void system_register(system_update_function update_func)
 {
-    struct _System system;
-    system.update_func       = update_func;
-    system.external.entities = array_new(sizeof(EntityHandle), 32, NULL);
-    cache_add(_ecs.systems, &system);
+    struct SystemNewArgs args;
+    args.update_func = update_func;
+    cache_emplace(_ecs.systems, &args);
 }
 
 void systems_update(void)
