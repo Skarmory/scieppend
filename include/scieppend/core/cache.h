@@ -57,6 +57,10 @@ void cache_init(struct Cache* cache, int item_size, int capacity, alloc_function
  */
 void cache_free(struct Cache* cache);
 
+/* Frees cache internals, does not free the given pointer.
+ */
+void cache_uninit(struct Cache* cache);
+
 /* Returns the number of currently valid handles.
  * This excludes the handles that have been unlocked but are currently invalid.
  */

@@ -232,6 +232,12 @@ void cache_init(struct Cache* cache, int item_size, int capacity, alloc_function
 
 void cache_free(struct Cache* cache)
 {
+    cache_uninit(cache);
+    free(cache);
+}
+
+void cache_uninit(struct Cache* cache)
+{
     if(cache->free_func)
     {
         for(int i = 0; i < cache->max_used; ++i)
@@ -246,7 +252,6 @@ void cache_free(struct Cache* cache)
 
     free(cache->items);
     free(cache->handles);
-    free(cache);
 }
 
 int cache_size(struct Cache* cache)
