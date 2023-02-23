@@ -16,7 +16,7 @@ void          array_free(struct Array* array);
 int           array_count(struct Array* array);
 int           array_capacity(struct Array* array);
 void          array_add(struct Array* array, void* item);
-void          array_remove(struct Array* array, int index);
+void          array_remove_at(struct Array* array, int index);
 void*         array_get(struct Array* array, int index);
 void          array_shrink(struct Array* array);
 int           array_find(struct Array*, void* item, comp_function comp_func);

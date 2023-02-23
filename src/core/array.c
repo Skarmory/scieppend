@@ -81,6 +81,7 @@ void array_remove_at(struct Array* array, int index)
 
     memcpy(&array->data[array->item_size * index], &array->data[array->item_size * array->count-1], array->item_size);
     memset(&array->data[array->item_size * array->count-1], '\0', array->item_size);
+    --array->count;
 }
 
 void* array_get(struct Array* array, int index)
