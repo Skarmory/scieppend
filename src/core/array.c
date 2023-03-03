@@ -5,14 +5,13 @@
 
 static const int C_DEFAULT_CAPACITY = 8;
 
-struct Array
+static void _array_default_alloc_func([[maybe_unused]] void* item, [[maybe_unused]] void* args)
 {
-    char*         data;
-    int           count;
-    int           capacity;
-    int           item_size;
-    free_function free_func;
-};
+}
+
+static void _array_default_free_func([[maybe_unused]] void* item)
+{
+}
 
 static void _array_realloc(struct Array* array, int new_capacity)
 {
@@ -26,18 +25,42 @@ static void _array_realloc(struct Array* array, int new_capacity)
     array->capacity = new_capacity;
 }
 
-struct Array* array_new(int item_size, int capacity, free_function free_func)
+static char* _array_next_element(struct Array* array)
+{
+    if(array->count == array->capacity)
+    {
+        _array_realloc(array, array->capacity << 1);
+    }
+
+    ++array->count;
+
+    return &array->data[array->item_size * array->count-1];
+}
+
+struct Array* array_new(int item_size, int capacity, array_alloc_function alloc_func, array_free_function free_func)
 {
     struct Array* array = malloc(sizeof(struct Array));
-    array->capacity  = capacity > 0 ? capacity : C_DEFAULT_CAPACITY;
-    array->count     = 0;
-    array->item_size = item_size;
-    array->data      = malloc(item_size * array->capacity);
-    array->free_func = free_func;
+    array_init(array, item_size, capacity, alloc_func, free_func);
     return array;
 }
 
+void array_init(struct Array* array, int item_size, int capacity, array_alloc_function alloc_func, array_free_function free_func)
+{
+    array->capacity   = capacity > 0 ? capacity : C_DEFAULT_CAPACITY;
+    array->count      = 0;
+    array->item_size  = item_size;
+    array->data       = malloc(item_size * array->capacity);
+    array->alloc_func = alloc_func ? alloc_func : &_array_default_alloc_func;
+    array->free_func  = free_func ? free_func : &_array_default_free_func;
+}
+
 void array_free(struct Array* array)
+{
+    array_uninit(array);
+    free(array);
+}
+
+void array_uninit(struct Array* array)
 {
     if(array->free_func)
     {
@@ -48,7 +71,6 @@ void array_free(struct Array* array)
     }
 
     free(array->data);
-    free(array);
 }
 
 int array_count(struct Array* array)
@@ -63,13 +85,15 @@ int array_capacity(struct Array* array)
 
 void array_add(struct Array* array, void* item)
 {
-    if(array->count == array->capacity)
-    {
-        _array_realloc(array, array->capacity << 1);
-    }
+    char* next_elem = _array_next_element(array);
+    memcpy(next_elem, item, array->item_size);
+}
 
-    memcpy(&array->data[array->item_size * array->count], item, array->item_size);
-    ++array->count;
+void* array_emplace(struct Array* array, void* args)
+{
+    char* next_elem = _array_next_element(array);
+    array->alloc_func(next_elem, args);
+    return next_elem;
 }
 
 void array_remove_at(struct Array* array, int index)
@@ -94,7 +118,7 @@ void array_shrink(struct Array* array)
     _array_realloc(array, array->count);
 }
 
-int array_find(struct Array* array, void* item, comp_function comp_func)
+int array_find(struct Array* array, void* item, array_comp_function comp_func)
 {
     for(int i = 0; i < array->count; ++i)
     {
