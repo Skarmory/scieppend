@@ -60,7 +60,7 @@ static void _system_alloc(void* new_system_vp, void* new_system_args_vp)
     struct _System* new_system = new_system_vp;
     struct SystemNewArgs* args = new_system_args_vp;
     new_system->update_func        = args->update_func;
-    new_system->external.entities  = array_new(sizeof(EntityHandle), 32, NULL);
+    new_system->external.entities  = array_new(sizeof(EntityHandle), 32, NULL, NULL);
 }
 
 static void _system_free(void* system_vp)
@@ -90,7 +90,7 @@ EntityHandle entity_create(void)
     int handle = cache_emplace(_ecs.entities, NULL);
     struct Entity* entity = cache_get(_ecs.entities, handle);
     entity->id = handle;
-    entity->components = array_new(sizeof(struct _Component), 8, NULL);
+    entity->components = array_new(sizeof(struct _Component), 8, NULL, NULL);
     return handle;
 }
 
