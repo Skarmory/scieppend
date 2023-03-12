@@ -14,7 +14,7 @@ static struct Array* s_test_array;
 
 static void _setup_array_add(void)
 {
-    s_test_array = array_new(sizeof(struct ArrayTestItem), 4, NULL);
+    s_test_array = array_new(sizeof(struct ArrayTestItem), 4, NULL, NULL);
 }
 
 static void _teardown_array_add(void)
