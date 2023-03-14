@@ -242,3 +242,14 @@ void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn
     _list_add_test(testobj);
 }
 
+void testing_run_tests(void)
+{
+    for(struct Test* test = _testing.list_head; test != NULL; test = test->next)
+    {
+        _testing.current_test = test;
+        _testing.current_test->setup(_testing.current_test->userstate);
+        _testing.current_test->success = _testing.current_test->test(_testing.current_test->userstate);
+        _testing.current_test->teardown(_testing.current_test->userstate);
+    }
+}
+
