@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define C_MSG_LENGTH 256
@@ -13,7 +14,41 @@ static struct
 {
     FILE*  logfile;
     int    indent;
+
+    struct Test* list_head;
+    struct Test* list_tail;
+    struct Test* current_test;
 } _testing;
+
+static void _list_add_test(struct Test* test)
+{
+    if(!_testing.list_tail)
+    {
+        _testing.list_tail = test;
+        _testing.list_head = test;
+        return;
+    }
+
+    _testing.list_tail->next = test;
+    _testing.list_tail = test;
+}
+
+static void _add_msg(char msg[TEST_MSG_MAX])
+{
+    struct TestMessage* msgnode = malloc(sizeof(struct TestMessage));
+    snprintf(msgnode->msg, TEST_MSG_MAX, "%s", msg);
+    msgnode->next = NULL;
+
+    if(!_testing.current_test->msg_tail)
+    {
+        _testing.current_test->msg_tail = msgnode;
+        _testing.current_test->msg_head = msgnode;
+        return;
+    }
+
+    _testing.current_test->msg_tail->next = msgnode;
+    _testing.current_test->msg_tail = msgnode;
+}
 
 static void _push_indent(void)
 {
