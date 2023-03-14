@@ -8,9 +8,9 @@
 #define TEST_NAME_MAX 64
 #define TEST_MSG_MAX 256
 
-typedef bool(*test_func)(void);
-typedef void(*setup_func)(void);
-typedef void(*teardown_func)(void);
+typedef bool(*test_fn)(void* userstate);
+typedef void(*setup_fn)(void* userstate);
+typedef void(*teardown_fn)(void* userstate);
 
 struct TestMessage
 {
@@ -38,8 +38,8 @@ bool test_assert_equal_float(const float expect, const float actual);
 bool test_assert_not_null(void* value);
 bool test_assert_null(void* value);
 
-void test_run_test_block(const char* block_name, test_func func);
-bool test_run_test(const char* test_name, test_func test, setup_func setup, teardown_func teardown);
+void test_run_test_block(const char* block_name, test_fn func);
+bool test_run_test(const char* test_name, test_fn test, setup_fn setup, teardown_fn teardown);
 
 void test_init(void);
 void test_uninit(void);

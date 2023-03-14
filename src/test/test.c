@@ -156,30 +156,32 @@ bool test_assert_null(void* value)
     return success;
 }
 
-void test_run_test_block(const char* block_name, test_func func)
+void test_run_test_block(const char* block_name, test_fn func)
 {
     _print("Test Block: %s\n", block_name);
     _push_indent();
-    bool success = func();
+    int* blah;
+    bool success = func(blah);
     _pop_indent();
     _print(success ? "SUCCESS\n" : "FAILED\n");
 }
 
-bool test_run_test(const char* test_name, test_func test, setup_func setup, teardown_func teardown)
+bool test_run_test(const char* test_name, test_fn test, setup_fn setup, teardown_fn teardown)
 {
     _print("Test: %s\n", test_name);
     _push_indent();
 
+    int* blah;
     if(setup)
     {
-        setup();
+        setup(blah);
     }
 
-    bool success = test();
+    bool success = test(blah);
 
     if(teardown)
     {
-        teardown();
+        teardown(blah);
     }
 
     _pop_indent();
