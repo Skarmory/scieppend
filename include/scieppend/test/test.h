@@ -44,4 +44,6 @@ bool test_run_test(const char* test_name, test_fn test, setup_fn setup, teardown
 void test_init(void);
 void test_uninit(void);
 
+void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn test, void* userstate, int userstate_size);
+
 #endif

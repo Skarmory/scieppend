@@ -219,3 +219,26 @@ void test_uninit(void)
         test = testnext;
     }
 }
+
+void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn test, void* userstate, int userstate_size)
+{
+    struct Test* testobj = malloc(sizeof(struct Test));
+    snprintf(testobj->name, TEST_NAME_MAX, "%s", name);
+    testobj->setup = setup;
+    testobj->teardown = teardown;
+    testobj->test = test;
+    testobj->userstate = malloc(userstate_size);
+    if(userstate != NULL)
+    {
+        memcpy(testobj->userstate, userstate, userstate_size);
+    }
+    else
+    {
+        testobj->userstate = NULL;
+    }
+    testobj->msg_head = NULL;
+    testobj->msg_tail = NULL;
+
+    _list_add_test(testobj);
+}
+
