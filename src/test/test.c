@@ -192,8 +192,28 @@ void test_init(void)
 {
     _testing.logfile = stdout;
     _testing.indent = 0;
+    _testing.list_head = NULL;
+    _testing.list_tail = NULL;
+    _testing.current_test = NULL;
 }
 
 void test_uninit(void)
 {
+    struct Test* test = _testing.list_head;
+    while(test != NULL)
+    {
+        struct Test* testnext = test->next;
+
+        struct TestMessage* msg = test->msg_head;
+        while(msg != NULL)
+        {
+            struct TestMessage* msgnext = msg->next;
+            free(msg);
+            msg = msgnext;
+        }
+
+        free(test->userstate);
+        free(test);
+        test = testnext;
+    }
 }
