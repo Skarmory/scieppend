@@ -253,3 +253,11 @@ void testing_run_tests(void)
     }
 }
 
+void testing_report(void)
+{
+    for(struct Test* test = _testing.list_head; test != NULL; test = test->next)
+    for(struct TestMessage* msg = test->msg_head; msg != NULL; msg = msg->next)
+    {
+        fprintf(stdout, "%s\n", msg->msg);
+    }
+}

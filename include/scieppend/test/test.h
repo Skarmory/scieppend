@@ -46,5 +46,6 @@ void test_uninit(void);
 
 void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn test, void* userstate, int userstate_size);
 void testing_run_tests(void);
+void testing_report(void);
 
 #endif
