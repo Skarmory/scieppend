@@ -7,19 +7,19 @@
 
 static struct LinkArray s_test_array;
 
-static void _setup_linkarray(void)
+static void _setup_linkarray([[maybe_unused]] void* userstate)
 {
     linkarray_init(&s_test_array, sizeof(int), 8);
 }
 
-static void _teardown_linkarray(void)
+static void _teardown_linkarray([[maybe_unused]] void* userstate)
 {
     linkarray_uninit(&s_test_array);
 }
 
-static void _setup_linkarray_many_elements(void)
+static void _setup_linkarray_many_elements([[maybe_unused]] void* userstate)
 {
-    _setup_linkarray();
+    _setup_linkarray(userstate);
 
     for(int i = 0; i < 8; ++i)
     {
@@ -28,21 +28,21 @@ static void _setup_linkarray_many_elements(void)
     }
 }
 
-static void _teardown_linkarray_many_elements(void)
+static void _teardown_linkarray_many_elements([[maybe_unused]] void* userstate)
 {
-    _teardown_linkarray();
+    _teardown_linkarray(userstate);
 }
 
-static void _setup_linkarray_single_element(void)
+static void _setup_linkarray_single_element([[maybe_unused]] void* userstate)
 {
-    _setup_linkarray();
+    _setup_linkarray(userstate);
     int elem = 7;
     linkarray_add(&s_test_array, &elem);
 }
 
-static void _teardown_linkarray_single_element(void)
+static void _teardown_linkarray_single_element([[maybe_unused]] void* userstate)
 {
-    _teardown_linkarray();
+    _teardown_linkarray(userstate);
 }
 
 static bool _test_linkarray_state(int expect_count, int expect_capacity, int expect_usedhead, int expect_freehead)
@@ -55,7 +55,7 @@ static bool _test_linkarray_state(int expect_count, int expect_capacity, int exp
     return success;
 }
 
-static bool _test_linkarray__add__to_capacity(void)
+static bool _test_linkarray__add__to_capacity([[maybe_unused]] void* userstate)
 {
     bool success = true;
 
@@ -72,7 +72,7 @@ static bool _test_linkarray__add__to_capacity(void)
     return success;
 }
 
-static bool _test_linkarray__add__beyond_capacity(void)
+static bool _test_linkarray__add__beyond_capacity([[maybe_unused]] void* userstate)
 {
     bool success = true;
 
@@ -92,7 +92,7 @@ static bool _test_linkarray__add__beyond_capacity(void)
     return success;
 }
 
-static bool _test_linkarray__pop_front__single_element(void)
+static bool _test_linkarray__pop_front__single_element([[maybe_unused]] void* userstate)
 {
     bool success = true;
 
@@ -103,7 +103,7 @@ static bool _test_linkarray__pop_front__single_element(void)
     return success;
 }
 
-static bool _test_linkarray__pop_front__many_elements(void)
+static bool _test_linkarray__pop_front__many_elements([[maybe_unused]] void* userstate)
 {
     bool success = true;
 
@@ -119,7 +119,7 @@ static bool _test_linkarray__pop_front__many_elements(void)
     return success;
 }
 
-bool test_linkarray_add(void)
+bool test_linkarray_add([[maybe_unused]] void* userstate)
 {
     bool success = true;
     success &= test_run_test("add to capacity", &_test_linkarray__add__to_capacity, &_setup_linkarray, &_teardown_linkarray);
@@ -127,7 +127,7 @@ bool test_linkarray_add(void)
     return success;
 }
 
-bool test_linkarray_pop_front(void)
+bool test_linkarray_pop_front([[maybe_unused]] void* userstate)
 {
     bool success = true;
     success &= test_run_test("pop front single element", &_test_linkarray__pop_front__single_element, &_setup_linkarray_single_element, &_teardown_linkarray_single_element);

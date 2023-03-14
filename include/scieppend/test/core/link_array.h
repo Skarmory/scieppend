@@ -3,8 +3,8 @@
 
 #include <stdbool.h>
 
-bool test_linkarray_add(void);
-bool test_linkarray_pop_front(void);
+bool test_linkarray_add(void* userstate);
+bool test_linkarray_pop_front(void* userstate);
 void test_linkarray_run_all(void);
 
 #endif
