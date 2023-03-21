@@ -9,11 +9,13 @@
 
 static const char* C_SUCCESS_STR = "SUCCESS";
 static const char* C_FAILURE_STR = "FAILURE";
+static const int   C_SUCCESS_STR_SIZE = 7;
 
 static struct
 {
     FILE*  logfile;
     int    indent;
+    int    longest_output_string;
 
     struct Test* list_head;
     struct Test* list_tail;
@@ -33,21 +35,32 @@ static void _list_add_test(struct Test* test)
     _testing.list_tail = test;
 }
 
-static void _add_msg(char msg[TEST_MSG_MAX])
+static void _add_test_case(bool success, const char* format, ...)
 {
-    struct TestMessage* msgnode = malloc(sizeof(struct TestMessage));
-    snprintf(msgnode->msg, TEST_MSG_MAX, "%s", msg);
-    msgnode->next = NULL;
+    struct TestCase* casenode = malloc(sizeof(struct TestCase));
+    casenode->next = NULL;
+    casenode->success = success;
 
-    if(!_testing.current_test->msg_tail)
+    va_list args;
+    va_start(args, format);
+    vsnprintf(casenode->msg, TEST_NAME_MAX+ TEST_MSG_MAX, format, args);
+    va_end(args);
+
+    int msglen = strlen(casenode->msg);
+    if(msglen > _testing.longest_output_string)
     {
-        _testing.current_test->msg_tail = msgnode;
-        _testing.current_test->msg_head = msgnode;
+        _testing.longest_output_string = msglen;
+    }
+
+    if(!_testing.current_test->case_tail)
+    {
+        _testing.current_test->case_tail = casenode;
+        _testing.current_test->case_head = casenode;
         return;
     }
 
-    _testing.current_test->msg_tail->next = msgnode;
-    _testing.current_test->msg_tail = msgnode;
+    _testing.current_test->case_tail->next = casenode;
+    _testing.current_test->case_tail = casenode;
 }
 
 static void _push_indent(void)
@@ -83,76 +96,83 @@ static const char* _success_str(bool success)
     return success ? C_SUCCESS_STR : C_FAILURE_STR;
 }
 
-bool test_assert_equal_char_buffer(const char* expect, const char* actual)
+bool test_assert_equal_char_buffer(const char* case_name, const char* expect, const char* actual)
 {
-    _print("Test char buffers\n");
-
-    _push_indent();
-    _print("Expect: %s\n", expect);
-    _print("Actual: %s\n", actual);
-
-    _push_indent();
-
     int expect_len = strlen(expect);
     int actual_len = strlen(actual);
 
+    bool success = expect_len == actual_len;
+
     if(expect_len != actual_len)
     {
-        _print("Expected length %d, actual length %d\n", expect_len, actual_len);
-        goto test_assert_equal_char_buffer_fail;
+        goto test_assert_equal_char_buffer_exit;
     }
 
     for(int i = 0; i < expect_len; ++i)
     {
         if(expect[i] != actual[i])
         {
-            _print("Buffers differ at index %d\n", i);
-            goto test_assert_equal_char_buffer_fail;
+            success = TEST_CASE_FAIL;
+            goto test_assert_equal_char_buffer_exit;
         }
     }
 
-    _pop_indent();
-    _pop_indent();
-    return TEST_CASE_SUCCESS;
+    success = TEST_CASE_SUCCESS;
 
-test_assert_equal_char_buffer_fail:
-    _pop_indent();
-    _pop_indent();
-    return TEST_CASE_FAIL;
-}
+test_assert_equal_char_buffer_exit:
+    case_name = case_name ? case_name : "Test char buffer";
+    _add_test_case(success, "\t%s: expect \"%s\", actual \"%s\"", case_name, expect, actual);
 
-bool test_assert_equal_int(const int expect, const int actual)
-{
-    bool success = expect == actual;
-    _print("Test integer equal: expect \"%d\", actual \"%d\"\t%s\n", expect, actual, _success_str(success));
     return success;
 }
 
-bool test_assert_equal_bool(const bool expect, const bool actual)
+bool test_assert_equal_int(const char* case_name, const int expect, const int actual)
 {
     bool success = expect == actual;
-    _print("Test bool equal: expect \"%s\", actual: \"%s\"\t%s\n", expect ? "true" : "false", actual ? "true" : "false", _success_str(success));
+    case_name = case_name ? case_name : "Test integer equal";
+
+    _add_test_case(success, "\t%s: expect \"%d\", actual \"%d\"", case_name, expect, actual);
+
     return success;
 }
 
-bool test_assert_equal_float(const float expect, const float actual)
+bool test_assert_equal_bool(const char* case_name, const bool expect, const bool actual)
+{
+    bool success = expect == actual;
+    case_name = case_name ? case_name : "Test bool equal";
+
+    _add_test_case(success, "\t%s: expect \"%s\", actual: \"%s\"", case_name, expect ? "true" : "false", actual ? "true" : "false");
+
+    return success;
+}
+
+bool test_assert_equal_float(const char* case_name, const float expect, const float actual)
 {
     bool success = (expect == actual);
-    _print("Test float equal: expect \"%f\", actual \"%f\"\t%s\n", expect, actual, _success_str(success));
+    case_name = case_name ? case_name : "Test float equal";
+
+    _add_test_case(success, "\t%s: expect \"%f\", actual \"%f\"", case_name, expect, actual);
+
     return success;
 }
 
-bool test_assert_not_null(void* value)
+bool test_assert_not_null(const char* case_name, void* value)
 {
     bool success = value != NULL;
-    _print("Test pointer not null\t%s\n", _success_str(success));
+    case_name = case_name ? case_name : "Test pointer not null";
+
+    _add_test_case(success, "\t%s");
+
     return success;
 }
 
-bool test_assert_null(void* value)
+bool test_assert_null(const char* case_name, void* value)
 {
-    _print("Test pointer is null\n");
     bool success = value == NULL;
+    case_name = case_name ? case_name : "Test pointer is null";
+
+    _add_test_case(success, "\t%s");
+
     return success;
 }
 
@@ -194,6 +214,7 @@ void test_init(void)
 {
     _testing.logfile = stdout;
     _testing.indent = 0;
+    _testing.longest_output_string = 0;
     _testing.list_head = NULL;
     _testing.list_tail = NULL;
     _testing.current_test = NULL;
@@ -206,10 +227,10 @@ void test_uninit(void)
     {
         struct Test* testnext = test->next;
 
-        struct TestMessage* msg = test->msg_head;
+        struct TestCase* msg = test->case_head;
         while(msg != NULL)
         {
-            struct TestMessage* msgnext = msg->next;
+            struct TestCase* msgnext = msg->next;
             free(msg);
             msg = msgnext;
         }
@@ -236,8 +257,8 @@ void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn
     {
         testobj->userstate = NULL;
     }
-    testobj->msg_head = NULL;
-    testobj->msg_tail = NULL;
+    testobj->case_head = NULL;
+    testobj->case_tail = NULL;
 
     _list_add_test(testobj);
 }
@@ -255,9 +276,20 @@ void testing_run_tests(void)
 
 void testing_report(void)
 {
+    int output_buffer_length = _testing.longest_output_string + C_SUCCESS_STR_SIZE + 1;
+    char* output = malloc(output_buffer_length);
+
     for(struct Test* test = _testing.list_head; test != NULL; test = test->next)
-    for(struct TestMessage* msg = test->msg_head; msg != NULL; msg = msg->next)
     {
-        fprintf(stdout, "%s\n", msg->msg);
+        fprintf(stdout, "Test: %s\n", test->name);
+        for(struct TestCase* tc = test->case_head; tc != NULL; tc = tc->next)
+        {
+            memset(output, ' ', output_buffer_length);
+            memcpy(output, tc->msg, strlen(tc->msg));
+            memcpy(output + _testing.longest_output_string + 1, _success_str(tc->success), C_SUCCESS_STR_SIZE);
+            fprintf(stdout, "%s\n", output);
+        }
     }
+
+    free(output);
 }

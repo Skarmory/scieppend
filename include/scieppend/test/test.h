@@ -12,34 +12,32 @@ typedef bool(*test_fn)(void* userstate);
 typedef void(*setup_fn)(void* userstate);
 typedef void(*teardown_fn)(void* userstate);
 
-struct TestMessage
+struct TestCase
 {
-    struct TestMessage* next;
-    char                msg[TEST_MSG_MAX];
+    struct TestCase* next;
+    char             msg[TEST_NAME_MAX + TEST_MSG_MAX];
+    bool             success;
 };
 
 struct Test
 {
-    struct Test*        next;
-    char                name[TEST_NAME_MAX];
-    setup_fn            setup;
-    teardown_fn         teardown;
-    test_fn             test;
-    void*               userstate;
-    bool                success;
-    struct TestMessage* msg_head;
-    struct TestMessage* msg_tail;
+    struct Test*     next;
+    char             name[TEST_NAME_MAX];
+    setup_fn         setup;
+    teardown_fn      teardown;
+    test_fn          test;
+    void*            userstate;
+    bool             success;
+    struct TestCase* case_head;
+    struct TestCase* case_tail;
 };
 
-bool test_assert_equal_char_buffer(const char* expect, const char* actual);
-bool test_assert_equal_int(const int expect, const int actual);
-bool test_assert_equal_bool(const bool expect, const bool actual);
-bool test_assert_equal_float(const float expect, const float actual);
-bool test_assert_not_null(void* value);
-bool test_assert_null(void* value);
-
-void test_run_test_block(const char* block_name, test_fn func);
-bool test_run_test(const char* test_name, test_fn test, setup_fn setup, teardown_fn teardown);
+bool test_assert_equal_char_buffer(const char* case_name, const char* expect, const char* actual);
+bool test_assert_equal_int(const char* case_name, const int expect, const int actual);
+bool test_assert_equal_bool(const char* case_name, const bool expect, const bool actual);
+bool test_assert_equal_float(const char* case_name, const float expect, const float actual);
+bool test_assert_not_null(const char* case_name, void* value);
+bool test_assert_null(const char* case_name, void* value);
 
 void test_init(void);
 void test_uninit(void);
