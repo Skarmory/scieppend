@@ -5,16 +5,14 @@
 
 #include <stdio.h>
 
-static struct LinkArray s_test_array;
-
 static void _setup_linkarray([[maybe_unused]] void* userstate)
 {
-    linkarray_init(&s_test_array, sizeof(int), 8);
+    linkarray_init((struct LinkArray*)userstate, sizeof(int), 8);
 }
 
 static void _teardown_linkarray([[maybe_unused]] void* userstate)
 {
-    linkarray_uninit(&s_test_array);
+    linkarray_uninit((struct LinkArray*)userstate);
 }
 
 static void _setup_linkarray_many_elements([[maybe_unused]] void* userstate)
@@ -24,7 +22,7 @@ static void _setup_linkarray_many_elements([[maybe_unused]] void* userstate)
     for(int i = 0; i < 8; ++i)
     {
         int z = i * 7;
-        linkarray_add(&s_test_array, &z);
+        linkarray_add((struct LinkArray*)userstate, &z);
     }
 }
 
@@ -37,7 +35,7 @@ static void _setup_linkarray_single_element([[maybe_unused]] void* userstate)
 {
     _setup_linkarray(userstate);
     int elem = 7;
-    linkarray_add(&s_test_array, &elem);
+    linkarray_add((struct LinkArray*)userstate, &elem);
 }
 
 static void _teardown_linkarray_single_element([[maybe_unused]] void* userstate)
@@ -45,98 +43,87 @@ static void _teardown_linkarray_single_element([[maybe_unused]] void* userstate)
     _teardown_linkarray(userstate);
 }
 
-static bool _test_linkarray_state(int expect_count, int expect_capacity, int expect_usedhead, int expect_freehead)
+static void _test_linkarray_state(struct LinkArray* array, int expect_count, int expect_capacity, int expect_usedhead, int expect_freehead)
 {
-    bool success = true;
-    success &= test_assert_equal_int(expect_count, s_test_array.count);
-    success &= test_assert_equal_int(expect_capacity, s_test_array.capacity);
-    success &= test_assert_equal_int(expect_usedhead, s_test_array.usedhead);
-    success &= test_assert_equal_int(expect_freehead, s_test_array.freehead);
-    return success;
+    test_assert_equal_int("count", expect_count, array->count);
+    test_assert_equal_int("capacity", expect_capacity, array->capacity);
+    test_assert_equal_int("used head index", expect_usedhead, array->usedhead);
+    test_assert_equal_int("free head index", expect_freehead, array->freehead);
 }
 
-static bool _test_linkarray__add__to_capacity([[maybe_unused]] void* userstate)
+static void _test_linkarray__add__to_capacity([[maybe_unused]] void* userstate)
 {
-    bool success = true;
+    struct LinkArray* test_array = userstate;
 
     for(int i = 0; i < 8; ++i)
     {
         int z = i * 7;
-        linkarray_add(&s_test_array, &z);
+        linkarray_add(test_array, &z);
     }
 
-    success &= test_assert_equal_int(8, s_test_array.count);
-    success &= test_assert_equal_int(8, s_test_array.capacity);
-    success &= test_assert_equal_int(-1, s_test_array.freehead);
-
-    return success;
+    test_assert_equal_int("count", 8, test_array->count);
+    test_assert_equal_int("capacity", 8, test_array->capacity);
+    test_assert_equal_int("free head index", -1, test_array->freehead);
 }
 
-static bool _test_linkarray__add__beyond_capacity([[maybe_unused]] void* userstate)
+static void _test_linkarray__add__beyond_capacity([[maybe_unused]] void* userstate)
 {
-    bool success = true;
+    struct LinkArray* test_array = userstate;
 
-    success &= test_assert_equal_int(0, s_test_array.count);
-    success &= test_assert_equal_int(8, s_test_array.capacity);
+    test_assert_equal_int("array count", 0, test_array->count);
+    test_assert_equal_int("array capacity", 8, test_array->capacity);
 
-    int capacity = s_test_array.capacity + 1;
+    int capacity = test_array->capacity + 1;
     for(int i = 0; i < capacity; ++i)
     {
         int z = i * 7;
-        linkarray_add(&s_test_array, &z);
+        linkarray_add(test_array, &z);
     }
 
-    success &= test_assert_equal_int(9, s_test_array.count);
-    success &= test_assert_equal_int(16, s_test_array.capacity);
-
-    return success;
+    test_assert_equal_int("array count", 9, test_array->count);
+    test_assert_equal_int("array capacity", 16, test_array->capacity);
 }
 
-static bool _test_linkarray__pop_front__single_element([[maybe_unused]] void* userstate)
+static void _test_linkarray__pop_front__single_element([[maybe_unused]] void* userstate)
 {
-    bool success = true;
-
-    int elem = linkarray_pop_front(&s_test_array, int);
-    success &= test_assert_equal_int(7, elem);
-    success &= _test_linkarray_state(0, 8, -1, 0);
-
-    return success;
+    struct LinkArray* test_array = userstate;
+    int elem = linkarray_pop_front(test_array, int);
+    test_assert_equal_int("popped elem", 7, elem);
+    _test_linkarray_state(test_array, 0, 8, -1, 0);
 }
 
-static bool _test_linkarray__pop_front__many_elements([[maybe_unused]] void* userstate)
+static void _test_linkarray__pop_front__many_elements([[maybe_unused]] void* userstate)
 {
-    bool success = true;
+    struct LinkArray* test_array = userstate;
 
     for(int i = 0; i < 8; ++i)
     {
         int expect = (7 - i) * 7;
-        int elem = linkarray_pop_front(&s_test_array, int);
-        success &= test_assert_equal_int(expect, elem);
+        int elem = linkarray_pop_front(test_array, int);
+        test_assert_equal_int("popped elem", expect, elem);
     }
 
-    success &= _test_linkarray_state(0, 8, -1, 0);
-
-    return success;
+    _test_linkarray_state(test_array, 0, 8, -1, 0);
 }
 
-bool test_linkarray_add([[maybe_unused]] void* userstate)
+void test_linkarray_add(void)
 {
-    bool success = true;
-    success &= test_run_test("add to capacity", &_test_linkarray__add__to_capacity, &_setup_linkarray, &_teardown_linkarray);
-    success &= test_run_test("add beyond capacity", &_test_linkarray__add__beyond_capacity, &_setup_linkarray, &_teardown_linkarray);
-    return success;
+    struct LinkArray test_array;
+    testing_add_group("linkarray add");
+    testing_add_test("add to capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__add__to_capacity, &test_array, sizeof(test_array));
+    testing_add_test("add beyond capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__add__beyond_capacity, &test_array, sizeof(test_array));
 }
 
-bool test_linkarray_pop_front([[maybe_unused]] void* userstate)
+void test_linkarray_pop_front(void)
 {
-    bool success = true;
-    success &= test_run_test("pop front single element", &_test_linkarray__pop_front__single_element, &_setup_linkarray_single_element, &_teardown_linkarray_single_element);
-    success &= test_run_test("pop front many elements", &_test_linkarray__pop_front__many_elements, &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements);
-    return success;
+    struct LinkArray test_array;
+    testing_add_group("linkarray pop front");
+    testing_add_test("pop front single element", &_setup_linkarray_single_element, &_teardown_linkarray_single_element, &_test_linkarray__pop_front__single_element, &test_array, sizeof(test_array));
+    testing_add_test("pop front many elements", &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements, &_test_linkarray__pop_front__many_elements, &test_array, sizeof(test_array));
 }
 
 void test_linkarray_run_all(void)
 {
-    test_run_test_block("linkarray add", &test_linkarray_add);
-    test_run_test_block("linkarray pop front", &test_linkarray_pop_front);
+    test_linkarray_add();
+    test_linkarray_pop_front();
 }
