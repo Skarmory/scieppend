@@ -14,25 +14,40 @@ static const int   C_SUCCESS_STR_SIZE = 7;
 static struct
 {
     FILE*  logfile;
-    int    indent;
-    int    longest_output_string;
+    int    longest_output;
 
-    struct Test* list_head;
-    struct Test* list_tail;
-    struct Test* current_test;
+    struct TestGroup* group_head;
+    struct TestGroup* group_tail;
+    struct TestGroup* current_group;
+    struct Test*      current_test;
 } _testing;
 
-static void _list_add_test(struct Test* test)
+static void _testing_add_group(struct TestGroup* group)
 {
-    if(!_testing.list_tail)
+    _testing.current_group = group;
+
+    if(!_testing.group_tail)
     {
-        _testing.list_tail = test;
-        _testing.list_head = test;
+        _testing.group_tail = group;
+        _testing.group_head = group;
         return;
     }
 
-    _testing.list_tail->next = test;
-    _testing.list_tail = test;
+    _testing.group_tail->next = group;
+    _testing.group_tail = group;
+}
+
+static void _testing_add_test(struct Test* test)
+{
+    if(!_testing.current_group->test_tail)
+    {
+        _testing.current_group->test_tail = test;
+        _testing.current_group->test_head = test;
+        return;
+    }
+
+    _testing.current_group->test_tail->next = test;
+    _testing.current_group->test_tail = test;
 }
 
 static void _add_test_case(bool success, const char* format, ...)
@@ -47,9 +62,9 @@ static void _add_test_case(bool success, const char* format, ...)
     va_end(args);
 
     int msglen = strlen(casenode->msg);
-    if(msglen > _testing.longest_output_string)
+    if(msglen > _testing.longest_output)
     {
-        _testing.longest_output_string = msglen;
+        _testing.longest_output = msglen;
     }
 
     if(!_testing.current_test->case_tail)
@@ -61,34 +76,6 @@ static void _add_test_case(bool success, const char* format, ...)
 
     _testing.current_test->case_tail->next = casenode;
     _testing.current_test->case_tail = casenode;
-}
-
-static void _push_indent(void)
-{
-    _testing.indent++;
-}
-
-static void _pop_indent(void)
-{
-    if(_testing.indent > 0)
-    {
-        _testing.indent--;
-    }
-}
-
-static void _print(char* format, ...)
-{
-    va_list args;
-
-    for(int i = 0; i < _testing.indent; ++i)
-    {
-        fprintf(_testing.logfile, "\t");
-    }
-
-    va_start(args, format);
-    vfprintf(_testing.logfile, format, args);
-    va_end(args);
-    fflush(_testing.logfile);
 }
 
 static const char* _success_str(bool success)
@@ -176,69 +163,56 @@ bool test_assert_null(const char* case_name, void* value)
     return success;
 }
 
-void test_run_test_block(const char* block_name, test_fn func)
-{
-    _print("Test Block: %s\n", block_name);
-    _push_indent();
-    int* blah;
-    bool success = func(blah);
-    _pop_indent();
-    _print(success ? "SUCCESS\n" : "FAILED\n");
-}
-
-bool test_run_test(const char* test_name, test_fn test, setup_fn setup, teardown_fn teardown)
-{
-    _print("Test: %s\n", test_name);
-    _push_indent();
-
-    int* blah;
-    if(setup)
-    {
-        setup(blah);
-    }
-
-    bool success = test(blah);
-
-    if(teardown)
-    {
-        teardown(blah);
-    }
-
-    _pop_indent();
-    _print(success ? "SUCCESS\n" : "FAILED\n");
-
-    return success;
-}
-
 void test_init(void)
 {
     _testing.logfile = stdout;
-    _testing.indent = 0;
-    _testing.longest_output_string = 0;
-    _testing.list_head = NULL;
-    _testing.list_tail = NULL;
+    _testing.longest_output = 0;
+    _testing.group_head = NULL;
+    _testing.group_tail = NULL;
     _testing.current_test = NULL;
 }
 
 void test_uninit(void)
 {
-    struct Test* test = _testing.list_head;
-    while(test != NULL)
+    struct TestGroup* group = _testing.group_head;
+    while(group != NULL)
     {
-        struct Test* testnext = test->next;
+        struct TestGroup* groupnext = group->next;
+        struct Test* test = group->test_head;
 
-        struct TestCase* msg = test->case_head;
-        while(msg != NULL)
+        while(test != NULL)
         {
-            struct TestCase* msgnext = msg->next;
-            free(msg);
-            msg = msgnext;
+            struct Test* testnext = test->next;
+            struct TestCase* tc = test->case_head;
+
+            while(tc != NULL)
+            {
+                struct TestCase* tcnext = tc->next;
+                free(tc);
+                tc = tcnext;
+            }
+
+            free(test->userstate);
+            free(test);
+            test = testnext;
         }
 
-        free(test->userstate);
-        free(test);
-        test = testnext;
+        free(group);
+        group = groupnext;
     }
+
+}
+
+void testing_add_group(char name[])
+{
+    struct TestGroup* group = malloc(sizeof(struct TestGroup));
+    snprintf(group->name, TEST_NAME_MAX, "%s", name);
+    group->success = false;
+    group->next = NULL;
+    group->test_head = NULL;
+    group->test_tail = NULL;
+
+    _testing_add_group(group);
 }
 
 void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn test, void* userstate, int userstate_size)
@@ -248,6 +222,7 @@ void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn
     testobj->setup = setup;
     testobj->teardown = teardown;
     testobj->test = test;
+    testobj->success = false;
     testobj->userstate = malloc(userstate_size);
     if(userstate != NULL)
     {
@@ -257,37 +232,71 @@ void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn
     {
         testobj->userstate = NULL;
     }
+    testobj->next = NULL;
     testobj->case_head = NULL;
     testobj->case_tail = NULL;
 
-    _list_add_test(testobj);
+    _testing_add_test(testobj);
 }
 
 void testing_run_tests(void)
 {
-    for(struct Test* test = _testing.list_head; test != NULL; test = test->next)
+    if(!_testing.group_head)
     {
-        _testing.current_test = test;
-        _testing.current_test->setup(_testing.current_test->userstate);
-        _testing.current_test->success = _testing.current_test->test(_testing.current_test->userstate);
-        _testing.current_test->teardown(_testing.current_test->userstate);
+        fprintf(stdout, "Warning: No test groups have been added\n");
+        return;
+    }
+
+    for(struct TestGroup* group = _testing.group_head; group != NULL; group = group->next)
+    {
+        if(group->test_head == NULL)
+        {
+            fprintf(stdout, "Warning: No tests have been added to test group \"%s\"\n", group->name);
+            continue;
+        }
+
+        for(struct Test* test = group->test_head; test != NULL; test = test->next)
+        {
+            _testing.current_test = test;
+            test->setup(test->userstate);
+            test->test(test->userstate);
+            test->teardown(test->userstate);
+
+            if(!test->case_head)
+            {
+                fprintf(stdout, "Warning: No test cases found for test \"%s\", skipping evaluation\n", test->name);
+                continue;
+            }
+
+            for(struct TestCase* tc = test->case_head; tc != NULL; tc = tc->next)
+            {
+                test->success |= tc->success;
+            }
+
+            group->success |= test->success;
+        }
     }
 }
 
 void testing_report(void)
 {
-    int output_buffer_length = _testing.longest_output_string + C_SUCCESS_STR_SIZE + 1;
+    int output_buffer_length = _testing.longest_output + C_SUCCESS_STR_SIZE + 2;
     char* output = malloc(output_buffer_length);
+    memset(output, '\0', output_buffer_length);
 
-    for(struct Test* test = _testing.list_head; test != NULL; test = test->next)
+    for(struct TestGroup* group = _testing.group_head; group != NULL; group = group->next)
     {
-        fprintf(stdout, "Test: %s\n", test->name);
-        for(struct TestCase* tc = test->case_head; tc != NULL; tc = tc->next)
+        fprintf(stdout, "Test group: %s\n", group->name);
+        for(struct Test* test = group->test_head; test != NULL; test = test->next)
         {
-            memset(output, ' ', output_buffer_length);
-            memcpy(output, tc->msg, strlen(tc->msg));
-            memcpy(output + _testing.longest_output_string + 1, _success_str(tc->success), C_SUCCESS_STR_SIZE);
-            fprintf(stdout, "%s\n", output);
+            fprintf(stdout, "\tTest: %s\n", test->name);
+            for(struct TestCase* tc = test->case_head; tc != NULL; tc = tc->next)
+            {
+                memset(output, ' ', output_buffer_length - 1);
+                memcpy(output, tc->msg, strlen(tc->msg));
+                memcpy(output + _testing.longest_output + 1, _success_str(tc->success), C_SUCCESS_STR_SIZE);
+                fprintf(stdout, "\t\t%s\n", output);
+            }
         }
     }
 
