@@ -32,9 +32,7 @@ static char* _array_next_element(struct Array* array)
         _array_realloc(array, array->capacity << 1);
     }
 
-    ++array->count;
-
-    return &array->data[array->item_size * array->count-1];
+    return &array->data[(array->item_size * array->count)];
 }
 
 struct Array* array_new(int item_size, int capacity, array_alloc_function alloc_func, array_free_function free_func)
@@ -87,12 +85,14 @@ void array_add(struct Array* array, void* item)
 {
     char* next_elem = _array_next_element(array);
     memcpy(next_elem, item, array->item_size);
+    ++array->count;
 }
 
 void* array_emplace(struct Array* array, void* args)
 {
     char* next_elem = _array_next_element(array);
     array->alloc_func(next_elem, args);
+    ++array->count;
     return next_elem;
 }
 
