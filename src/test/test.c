@@ -231,15 +231,17 @@ void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn
     testobj->teardown = teardown ? teardown : _default_teardown;
     testobj->test = test;
     testobj->success = false;
-    testobj->userstate = malloc(userstate_size);
+
     if(userstate != NULL)
     {
+        testobj->userstate = malloc(userstate_size);
         memcpy(testobj->userstate, userstate, userstate_size);
     }
     else
     {
         testobj->userstate = NULL;
     }
+
     testobj->next = NULL;
     testobj->case_head = NULL;
     testobj->case_tail = NULL;
