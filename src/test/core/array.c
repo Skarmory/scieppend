@@ -10,77 +10,83 @@ struct ArrayTestItem
     float f;
 };
 
-static struct Array* s_test_array;
-
-static void _setup_array_add(void)
+static void _setup_array_add([[maybe_unused]] void* userstate)
 {
-    s_test_array = array_new(sizeof(struct ArrayTestItem), 4, NULL, NULL);
+    array_init(userstate, sizeof(struct ArrayTestItem), 4, NULL, NULL);
 }
 
-static void _teardown_array_add(void)
+static void _teardown_array_add([[maybe_unused]] void* userstate)
 {
-    array_free(s_test_array);
+    array_uninit((struct Array*)userstate);
+}
+
+// ARRAY COMMON
+
+static void _test_array_count(struct Array* array, int expect)
+{
+    test_assert_equal_int("array count", expect, array->count);
+}
+
+static void _test_array_capacity(struct Array* array, int expect)
+{
+    test_assert_equal_int("array capacity", expect, array->capacity);
 }
 
 // ARRAY ADD
 
-static bool _test_array_add_no_realloc(void)
+static void _test_array_add_no_realloc([[maybe_unused]] void* userstate)
 {
-    bool success = true;
+    struct Array* test_array = userstate;
+
+    _test_array_count(test_array, 0);
+    _test_array_capacity(test_array, 4);
 
     struct ArrayTestItem test_item;
     test_item.i = 7;
     test_item.f = 33.0f;
 
-    success &= test_assert_equal_int(0, array_count(s_test_array));
-    success &= test_assert_equal_int(4, array_capacity(s_test_array));
+    array_add(test_array, &test_item);
 
-    array_add(s_test_array, &test_item);
+    _test_array_count(test_array, 1);
+    _test_array_capacity(test_array, 4);
 
-    success &= test_assert_equal_int(1, array_count(s_test_array));
-    success &= test_assert_equal_int(4, array_capacity(s_test_array));
-
-    struct ArrayTestItem* retrieved = array_get(s_test_array, 0);
-    success &= test_assert_equal_int(test_item.i, retrieved->i);
-    success &= test_assert_equal_float(test_item.f, retrieved->f);
-
-    return success;
+    struct ArrayTestItem* retrieved = array_get(test_array, 0);
+    test_assert_equal_int("elem int value", test_item.i, retrieved->i);
+    test_assert_equal_float("elem float value", test_item.f, retrieved->f);
 }
 
-static bool _test_array_add_with_realloc(void)
+static void _test_array_add_with_realloc([[maybe_unused]] void* userstate)
 {
-    bool success = true;
+    struct Array* test_array = userstate;
 
-    success &= test_assert_equal_int(0, array_count(s_test_array));
-    success &= test_assert_equal_int(4, array_capacity(s_test_array));
+    _test_array_count(test_array, 0);
+    _test_array_capacity(test_array, 4);
 
     struct ArrayTestItem test_item;
     for(int i = 0; i < 6; ++i)
     {
         test_item.i = i * 7;
         test_item.f = (float)i * 33.0f;
-        array_add(s_test_array, &test_item);
+        array_add(test_array, &test_item);
     }
 
-    success &= test_assert_equal_int(6, array_count(s_test_array));
-    success &= test_assert_equal_int(8, array_capacity(s_test_array));
+    _test_array_count(test_array, 6);
+    _test_array_capacity(test_array, 8);
 
     for(int i = 0; i < 6; ++i)
     {
-        struct ArrayTestItem* retrieved = array_get(s_test_array, i);
-        success &= test_assert_equal_int(i * 7, retrieved->i);
-        success &= test_assert_equal_float((float)i * 33.0f, retrieved->f);
+        struct ArrayTestItem* retrieved = array_get(test_array, i);
+        test_assert_equal_int("elem int value", i * 7, retrieved->i);
+        test_assert_equal_float("elem float value", (float)i * 33.0f, retrieved->f);
     }
-
-    return success;
 }
 
-bool test_array_add(void)
+void test_array_add(void)
 {
-    bool success = true;
-    success &= test_run_test("add_no_realloc", &_test_array_add_no_realloc, &_setup_array_add, &_teardown_array_add);
-    success &= test_run_test("add_with_realloc", &_test_array_add_with_realloc, &_setup_array_add, &_teardown_array_add);
-    return success;
+    struct Array test_array;
+    testing_add_group("dynamic array add");
+    testing_add_test("add_no_realloc", &_setup_array_add, &_teardown_array_add, &_test_array_add_no_realloc, &test_array, sizeof(struct Array));
+    testing_add_test("add_with_realloc", &_setup_array_add, &_teardown_array_add, &_test_array_add_with_realloc, &test_array, sizeof(struct Array));
 }
 
 // ARRAY_REMOVE
@@ -93,16 +99,14 @@ void _teardown_array_remove(void)
 {
 }
 
-bool test_array_remove(void)
+void test_array_remove(void)
 {
-    bool success = true;
     //success &= test_run_test("remove_from_start", &_test_array_remove_from_start, &
-    return success;
 }
 
 // RUN ALL
 
 void test_array_run_all(void)
 {
-    test_run_test_block("array_add", &test_array_add);
+    test_array_add();
 }
