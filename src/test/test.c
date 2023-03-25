@@ -78,6 +78,14 @@ static void _add_test_case(bool success, const char* format, ...)
     _testing.current_test->case_tail = casenode;
 }
 
+static void _default_setup([[maybe_unused]] void* userstate)
+{
+}
+
+static void _default_teardown([[maybe_unused]] void* userstate)
+{
+}
+
 static const char* _success_str(bool success)
 {
     return success ? C_SUCCESS_STR : C_FAILURE_STR;
@@ -219,8 +227,8 @@ void testing_add_test(char name[], setup_fn setup, teardown_fn teardown, test_fn
 {
     struct Test* testobj = malloc(sizeof(struct Test));
     snprintf(testobj->name, TEST_NAME_MAX, "%s", name);
-    testobj->setup = setup;
-    testobj->teardown = teardown;
+    testobj->setup = setup ? setup : _default_setup;
+    testobj->teardown = teardown ? teardown : _default_teardown;
     testobj->test = test;
     testobj->success = false;
     testobj->userstate = malloc(userstate_size);
