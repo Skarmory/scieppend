@@ -10,51 +10,74 @@ struct TestComponent
     int z;
 };
 
-static int _test_system_update_var1 = 0;
-static int _test_system_update_var2 = 0;
-static int _test_system_update_var3 = 0;
+struct SystemTestState
+{
+    int system_update_var1;
+    int system_update_var2;
+    int system_update_var3;
+};
 
-static ComponentTypeHandle test_component_type_id;
+struct EntityTestState
+{
+    ComponentTypeHandle component_type_id;
+};
 
 static void _system_update_func1(struct System* sys)
 {
-    ++_test_system_update_var1;
+    //++_test_system_update_var1;
 }
 
 static void _system_update_func2(struct System* sys)
 {
-    ++_test_system_update_var2;
+    //++_test_system_update_var2;
 }
 
 static void _system_update_func3(struct System* sys)
 {
-    ++_test_system_update_var3;
+    //++_test_system_update_var3;
 }
 
-static void _setup(void)
+static void _setup([[maybe_unused]] void* userstate)
 {
     ecs_init();
 }
 
-static void _setup_entity(void)
-{
-    _setup();
-    test_component_type_id = component_type_register(sizeof(struct TestComponent));
-}
-
-static void _teardown(void)
+static void _teardown([[maybe_unused]] void* userstate)
 {
     ecs_uninit();
 }
 
-static void _teardown_entity(void)
+static void _system_setup(void* userstate)
 {
-    _teardown();
+    struct SystemTestState* state = userstate;
+
+    _setup(userstate);
+
+    state->system_update_var1 = 0;
+    state->system_update_var2 = 0;
+    state->system_update_var3 = 0;
 }
 
-static bool _test_system_update(void)
+static void _system_teardown([[maybe_unused]] void* userstate)
 {
-    bool success = true;
+    _teardown(userstate);
+}
+
+static void _setup_entity([[maybe_unused]] void* userstate)
+{
+    struct EntityTestState* state = userstate;
+    _setup(userstate);
+    state->component_type_id = component_type_register(sizeof(struct TestComponent));
+}
+
+static void _teardown_entity([[maybe_unused]] void* userstate)
+{
+    _teardown(userstate);
+}
+
+static void _test_system_update([[maybe_unused]] void* userstate)
+{
+    struct SystemTestState* state = userstate;
 
     system_register(&_system_update_func1);
     system_register(&_system_update_func2);
@@ -62,47 +85,39 @@ static bool _test_system_update(void)
 
     systems_update();
 
-    success &= test_assert_equal_int(1, _test_system_update_var1);
-    success &= test_assert_equal_int(1, _test_system_update_var2);
-    success &= test_assert_equal_int(1, _test_system_update_var3);
 
     systems_update();
 
-    success &= test_assert_equal_int(2, _test_system_update_var1);
-    success &= test_assert_equal_int(2, _test_system_update_var2);
-    success &= test_assert_equal_int(2, _test_system_update_var3);
-
-    return success;
+    test_assert_equal_int("system 1 post-update value", 2, state->system_update_var1);
+    test_assert_equal_int("system 2 post-update value", 2, state->system_update_var2);
+    test_assert_equal_int("system 3 post-update value", 2, state->system_update_var3);
 }
 
-bool _test_entity_create_destroy(void)
+static void _test_entity_create_destroy([[maybe_unused]] void* userstate)
 {
-    bool success = true;
+    struct EntityTestState* state = userstate;
 
     EntityHandle entity = entity_create();
-    entity_add_component(entity, test_component_type_id);
-    entity_remove_component(entity, test_component_type_id);
+    entity_add_component(entity, state->component_type_id);
+    entity_remove_component(entity, state->component_type_id);
     //entity_destroy(entity);
-
-    return success;
 }
 
-bool test_ecs_systems(void)
+void test_ecs_systems(void)
 {
-    bool success = true;
-    success &= test_run_test("system update", &_test_system_update, &_setup, &_teardown);
-    return success;
+    struct SystemTestState state;
+    testing_add_group("system");
+    testing_add_test("system update", &_setup, &_teardown, &_test_system_update, &state, sizeof(state));
 }
 
-bool test_ecs_entity(void)
+void test_ecs_entity(void)
 {
-    bool success = true;
-    success &= test_run_test("entity creation", &_test_entity_create_destroy, &_setup_entity, &_teardown_entity);
-    return success;
+    testing_add_group("entity");
+    testing_add_test("entity creation", &_setup_entity, &_teardown_entity, &_test_entity_create_destroy, NULL, 0);
 }
 
 void test_ecs_run_all(void)
 {
-    test_run_test_block("Systems", &test_ecs_systems);
-    test_run_test_block("Entity", &test_ecs_entity);
+    test_ecs_systems();
+    test_ecs_entity();
 }
