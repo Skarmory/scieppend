@@ -7,10 +7,15 @@
 int main(int argc, char** argv)
 {
     test_init();
+
     test_array_run_all();
     test_stack_array_run_all();
     test_cache_run_all();
     test_linkarray_run_all();
+
+    testing_run_tests();
+    testing_report();
+
     test_uninit();
 
     return 0;
