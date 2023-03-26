@@ -211,7 +211,7 @@ struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, 
 {
     assert(capacity <= C_MAX_CAPACITY);
 
-    struct Cache* cache = calloc(1, sizeof(struct Cache));
+    struct Cache* cache = malloc(sizeof(struct Cache));
     cache_init(cache, item_size, capacity, alloc_func, free_func);
 
     return cache;
@@ -219,15 +219,20 @@ struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, 
 
 void cache_init(struct Cache* cache, int item_size, int capacity, alloc_function alloc_func, free_function free_func)
 {
-    cache->items      = calloc(capacity, item_size);
-    cache->handles    = malloc(sizeof(int) * capacity);
-    cache->item_size  = item_size;
-    cache->capacity   = capacity;
-    cache->free_head  = C_NULL_CACHE_HANDLE;
-    cache->alloc_func = alloc_func ? alloc_func : &_null_alloc;
-    cache->free_func  = free_func ? free_func : &_null_free;
+    cache->items        = malloc(capacity * item_size);
+    cache->handles      = malloc(sizeof(int) * capacity);
+    cache->current_used = 0;
+    cache->max_used     = 0;
+    cache->item_size    = item_size;
+    cache->capacity     = capacity;
+    cache->free_head    = C_NULL_CACHE_HANDLE;
+    cache->alloc_func   = alloc_func ? alloc_func : &_null_alloc;
+    cache->free_func    = free_func ? free_func : &_null_free;
 
-    memset(cache->handles, C_NULL_CACHE_HANDLE, sizeof(int) * capacity);
+    for(int i = 0; i < cache->capacity; ++i)
+    {
+        cache->handles[i] = C_NULL_CACHE_HANDLE;
+    }
 }
 
 void cache_free(struct Cache* cache)
@@ -370,14 +375,16 @@ struct CacheIt cache_end(struct Cache* cache)
 
 struct CacheIt cache_it_next(struct CacheIt it)
 {
+    ++it.current_idx;
+
     while(it.current_idx < it.cache->max_used)
     {
-        ++it.current_idx;
-
         if(_check_valid(it.cache->handles[it.current_idx]))
         {
             return it;
         }
+
+        ++it.current_idx;
     }
 
     return cache_end(it.cache);
