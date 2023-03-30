@@ -173,14 +173,37 @@ void linkarray_add(struct LinkArray* array, void* item)
     ++array->count;
 }
 
-char** linkarray_pop_front_voidp(struct LinkArray* array)
+struct LinkArrayIt linkarray_begin(struct LinkArray* array)
 {
-    int pop_idx = array->usedhead;
-    struct LinkArrayNode* pop_this = _get_node(array, pop_idx);
+    struct LinkArrayIt it;
+    it.array = array;
+    it.index = array->usedhead;
+    return it;
+}
 
-    _make_free_node(array, pop_this, pop_idx);
+struct LinkArrayIt linkarray_end(struct LinkArray* array)
+{
+    struct LinkArrayIt it;
+    it.array = array;
+    it.index = -1;
+    return it;
+}
 
-    --array->count;
+bool linkarray_it_eq(struct LinkArrayIt lhs, struct LinkArrayIt rhs)
+{
+    return (lhs.array == rhs.array && lhs.index == rhs.index);
+}
 
-    return &pop_this->data;
+struct LinkArrayIt linkarray_it_next(struct LinkArrayIt it)
+{
+    struct LinkArrayNode* node = _get_node(it.array, it.index);
+    struct LinkArrayIt next = it;
+    next.index = node->next;
+    return next;
+}
+
+void** linkarray_it_get_voidp(struct LinkArrayIt it)
+{
+    struct LinkArrayNode* node = _get_node(it.array, it.index);
+    return &node->data;
 }
