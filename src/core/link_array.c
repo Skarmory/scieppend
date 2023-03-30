@@ -15,7 +15,11 @@ static inline int _get_offset_bytes(struct LinkArray* array, int idx)
 
 static inline struct LinkArrayNode* _get_node(struct LinkArray* array, int idx)
 {
-    return (struct LinkArrayNode*) &array->nodes[_get_offset_bytes(array, idx)];
+    if(idx < 0 || idx >= array->capacity)
+    {
+        return NULL;
+    }
+    return (struct LinkArrayNode*) &((char*)array->nodes)[_get_offset_bytes(array, idx)];
 }
 
 static void _link_nodes(struct LinkArray* array, int start)

@@ -5,7 +5,7 @@ struct LinkArrayNode
 {
     int   next;
     int   prev;
-    char* data;
+    void* data;
 };
 
 struct LinkArray
