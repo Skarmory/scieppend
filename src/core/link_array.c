@@ -70,6 +70,18 @@ static void _make_free_node(struct LinkArray* array, struct LinkArrayNode* node,
         nextnode->prev = node->prev;
     }
 
+    if(node->next != -1)
+    {
+        // Not tail
+        struct LinkArrayNode* nextnode = _get_node(array, node->next);
+        nextnode->prev = node->prev;
+    }
+    else
+    {
+        // Is tail
+        array->usedtail = node->prev;
+    }
+
     // Add to freelist
     if(array->freehead != -1)
     {
@@ -83,7 +95,7 @@ static void _make_free_node(struct LinkArray* array, struct LinkArrayNode* node,
     array->freehead = nidx;
 }
 
-static void _make_used_node(struct LinkArray* array, struct LinkArrayNode* node, int nidx)
+static void _make_used_node(struct LinkArray* array, struct LinkArrayNode* node, int nidx, bool head)
 {
     // Remove from freelist
     if(node->prev != -1)
@@ -104,58 +116,62 @@ static void _make_used_node(struct LinkArray* array, struct LinkArrayNode* node,
         nextnode->prev = node->prev;
     }
 
-    // Add to used list
-    if(array->usedhead != -1)
+    if(head)
     {
-        // Non-empty usedlist
-        struct LinkArrayNode* usedhead = _get_node(array, array->usedhead);
-        usedhead->prev = nidx;
+        // Add to used list at list head
+        if(array->usedhead != -1)
+        {
+            // Non-empty usedlist
+            struct LinkArrayNode* usedhead = _get_node(array, array->usedhead);
+            usedhead->prev = nidx;
+        }
+        else
+        {
+            // Empty usedlist
+            array->usedtail = nidx;
+        }
+
+        node->prev = -1;
+        node->next = array->usedhead;
+        array->usedhead = nidx;
     }
+    else
+    {
+        // Add to used list at list tail
+        if(array->usedtail != -1)
+        {
+            // Non-empty usedlist
+            struct LinkArrayNode* usedtail = _get_node(array, array->usedtail);
+            usedtail->next = nidx;
+        }
+        else
+        {
+            // Empty usedlist
+            array->usedhead = nidx;
+        }
 
-    node->next = array->usedhead;
-    node->prev = -1;
-    array->usedhead = nidx;
+        node->next = -1;
+        node->prev = array->usedtail;
+        array->usedtail = nidx;
+    }
 }
 
-struct LinkArray* linkarray_new(int item_size, int capacity)
+static void _internal_pop(struct LinkArray* array, int head_or_tail)
 {
-    struct LinkArray* array = malloc(sizeof(struct LinkArray));
-    linkarray_init(array, item_size, capacity);
-    return array;
+    struct LinkArrayNode* pop_this = _get_node(array, head_or_tail);
+
+    if(pop_this)
+    {
+        _make_free_node(array, pop_this, head_or_tail);
+        --array->count;
+        if(array->free)
+        {
+            array->free(&pop_this->data);
+        }
+    }
 }
 
-void linkarray_free(struct LinkArray* array)
-{
-    linkarray_uninit(array);
-    free(array);
-}
-
-void linkarray_init(struct LinkArray* array, int item_size, int capacity)
-{
-    array->item_size = item_size;
-    array->count = 0;
-    array->capacity = capacity > 0 ? capacity : 8;
-
-    int per_node_size = 2 * sizeof(int) + array->item_size;
-    array->nodes = malloc(per_node_size * array->capacity);
-
-    _link_nodes(array, 0);
-
-    array->usedhead = -1;
-    array->freehead = 0;
-}
-
-void linkarray_uninit(struct LinkArray* array)
-{
-    array->item_size = 0;
-    array->count = 0;
-    array->capacity = 0;
-    array->usedhead = -1;
-    array->freehead = -1;
-    free(array->nodes);
-}
-
-void linkarray_add(struct LinkArray* array, void* item)
+static void _internal_push(struct LinkArray* array, void* item, bool head)
 {
     if(array->count == array->capacity)
     {
@@ -166,11 +182,167 @@ void linkarray_add(struct LinkArray* array, void* item)
     int next_item_idx = array->freehead;
     struct LinkArrayNode* next_item = _get_node(array, next_item_idx);
 
-    _make_used_node(array, next_item, next_item_idx);
+    _make_used_node(array, next_item, next_item_idx, head);
 
     memcpy((char*)next_item + (2 * sizeof(int)), item, array->item_size);
 
     ++array->count;
+}
+
+static struct LinkArrayNode* _internal_at(struct LinkArray* array, int index)
+{
+    if(array->usedhead == -1 || index < 0 || index >= array->count)
+    {
+        return NULL;
+    }
+
+    struct LinkArrayNode* node =  NULL;
+
+    if((array->count - index) >= (array->count / 2))
+    {
+        // Forward iterate
+        node = _get_node(array, array->usedhead);
+        while(index != 0)
+        {
+            node = _get_node(array, node->next);
+            --index;
+        }
+    }
+    else
+    {
+        // Reverse iterate
+        node = _get_node(array, array->usedtail);
+        while(index != array->count - 1)
+        {
+            node = _get_node(array, node->prev);
+            ++index;
+        }
+    }
+
+    return node;
+}
+
+struct LinkArray* linkarray_new(int item_size, int capacity, alloc_fn alloc, free_fn free)
+{
+    struct LinkArray* array = malloc(sizeof(struct LinkArray));
+    linkarray_init(array, item_size, capacity, alloc, free);
+    return array;
+}
+
+void linkarray_free(struct LinkArray* array)
+{
+    linkarray_uninit(array);
+    free(array);
+}
+
+void linkarray_init(struct LinkArray* array, int item_size, int capacity, alloc_fn alloc, free_fn free)
+{
+    array->item_size = item_size;
+    array->count = 0;
+    array->capacity = capacity > 0 ? capacity : 8;
+    array->usedhead = -1;
+    array->usedtail = -1;
+    array->freehead = 0;
+    array->alloc = alloc;
+    array->free  = free;
+
+    int per_node_size = 2 * sizeof(int) + array->item_size;
+    array->nodes = malloc(per_node_size * array->capacity);
+
+    _link_nodes(array, 0);
+}
+
+void linkarray_uninit(struct LinkArray* array)
+{
+    array->item_size = 0;
+    array->count     = 0;
+    array->capacity  = 0;
+    array->usedhead  = -1;
+    array->usedtail  = -1;
+    array->freehead  = -1;
+    array->alloc     = NULL;
+    array->free      = NULL;
+    free(array->nodes);
+}
+
+int linkarray_count(struct LinkArray* array)
+{
+    return array->count;
+}
+
+void linkarray_push_front(struct LinkArray* array, void* item)
+{
+    _internal_push(array, item, true);
+}
+
+void linkarray_push_back(struct LinkArray* array, void* item)
+{
+    _internal_push(array, item, false);
+}
+
+void linkarray_clear(struct LinkArray* array)
+{
+    while(array->count > 0)
+    {
+        linkarray_pop_front(array);
+    }
+}
+
+void** linkarray_front_voidp(struct LinkArray* array)
+{
+    int peek_idx = array->usedhead;
+    struct LinkArrayNode* peek_this = _get_node(array, peek_idx);
+
+    if(peek_this)
+    {
+        return &peek_this->data;
+    }
+
+    return NULL;
+}
+
+void** linkarray_back_voidp(struct LinkArray* array)
+{
+    int peek_idx = array->usedtail;
+    struct LinkArrayNode* peek_this = _get_node(array, peek_idx);
+
+    if(peek_this)
+    {
+        return &peek_this->data;
+    }
+
+    return NULL;
+}
+
+void** linkarray_at_voidp(struct LinkArray* array, int index)
+{
+    struct LinkArrayNode* node = _internal_at(array, index);
+    return &node->data;
+}
+
+void linkarray_pop_front(struct LinkArray* array)
+{
+    _internal_pop(array, array->usedhead);
+}
+
+void linkarray_pop_back(struct LinkArray* array)
+{
+    _internal_pop(array, array->usedtail);
+}
+
+void linkarray_pop_at(struct LinkArray* array, int index)
+{
+    struct LinkArrayNode* pop_this = _internal_at(array, index);
+
+    if(pop_this)
+    {
+        _make_free_node(array, pop_this, index);
+        --array->count;
+        if(array->free)
+        {
+            array->free(&pop_this->data);
+        }
+    }
 }
 
 struct LinkArrayIt linkarray_begin(struct LinkArray* array)
