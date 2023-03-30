@@ -3,6 +3,7 @@
 
 void test_linkarray_add(void);
 void test_linkarray_pop_front(void);
+void test_linkarray_iterator(void);
 void test_linkarray_run_all(void);
 
 #endif

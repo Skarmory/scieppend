@@ -7,7 +7,7 @@
 
 static void _setup_linkarray([[maybe_unused]] void* userstate)
 {
-    linkarray_init((struct LinkArray*)userstate, sizeof(int), 8);
+    linkarray_init((struct LinkArray*)userstate, sizeof(int), 8, NULL, NULL);
 }
 
 static void _teardown_linkarray([[maybe_unused]] void* userstate)
@@ -22,7 +22,7 @@ static void _setup_linkarray_many_elements([[maybe_unused]] void* userstate)
     for(int i = 0; i < 8; ++i)
     {
         int z = i * 7;
-        linkarray_add((struct LinkArray*)userstate, &z);
+        linkarray_push_back((struct LinkArray*)userstate, &z);
     }
 }
 
@@ -35,7 +35,7 @@ static void _setup_linkarray_single_element([[maybe_unused]] void* userstate)
 {
     _setup_linkarray(userstate);
     int elem = 7;
-    linkarray_add((struct LinkArray*)userstate, &elem);
+    linkarray_push_back((struct LinkArray*)userstate, &elem);
 }
 
 static void _teardown_linkarray_single_element([[maybe_unused]] void* userstate)
@@ -43,30 +43,35 @@ static void _teardown_linkarray_single_element([[maybe_unused]] void* userstate)
     _teardown_linkarray(userstate);
 }
 
-static void _test_linkarray_state(struct LinkArray* array, int expect_count, int expect_capacity, int expect_usedhead, int expect_freehead)
+static void _test_linkarray_state(struct LinkArray* array, int expect_count, int expect_capacity, bool expect_usedlist_empty, bool expect_freelist_empty)
 {
     test_assert_equal_int("count", expect_count, array->count);
     test_assert_equal_int("capacity", expect_capacity, array->capacity);
-    test_assert_equal_int("used head index", expect_usedhead, array->usedhead);
-    test_assert_equal_int("free head index", expect_freehead, array->freehead);
+    test_assert_equal_bool("used list empty", expect_usedlist_empty, array->usedhead == -1);
+    test_assert_equal_bool("free list empty", expect_freelist_empty, array->freehead == -1);
 }
 
-static void _test_linkarray__add__to_capacity([[maybe_unused]] void* userstate)
+static void _test_linkarray__push_back__to_capacity([[maybe_unused]] void* userstate)
 {
     struct LinkArray* test_array = userstate;
 
     for(int i = 0; i < 8; ++i)
     {
         int z = i * 7;
-        linkarray_add(test_array, &z);
+        linkarray_push_back(test_array, &z);
     }
 
     test_assert_equal_int("count", 8, test_array->count);
     test_assert_equal_int("capacity", 8, test_array->capacity);
     test_assert_equal_int("free head index", -1, test_array->freehead);
+
+    for(int i = 0; i < 8; ++i)
+    {
+        test_assert_equal_int("elem value", i * 7, linkarray_at(test_array, i, int));
+    }
 }
 
-static void _test_linkarray__add__beyond_capacity([[maybe_unused]] void* userstate)
+static void _test_linkarray__push_back__beyond_capacity([[maybe_unused]] void* userstate)
 {
     struct LinkArray* test_array = userstate;
 
@@ -77,7 +82,7 @@ static void _test_linkarray__add__beyond_capacity([[maybe_unused]] void* usersta
     for(int i = 0; i < capacity; ++i)
     {
         int z = i * 7;
-        linkarray_add(test_array, &z);
+        linkarray_push_back(test_array, &z);
     }
 
     test_assert_equal_int("array count", 9, test_array->count);
@@ -87,31 +92,36 @@ static void _test_linkarray__add__beyond_capacity([[maybe_unused]] void* usersta
 static void _test_linkarray__pop_front__single_element([[maybe_unused]] void* userstate)
 {
     struct LinkArray* test_array = userstate;
-    int elem = linkarray_pop_front(test_array, int);
-    test_assert_equal_int("popped elem", 7, elem);
-    _test_linkarray_state(test_array, 0, 8, -1, 0);
+    _test_linkarray_state(test_array, 1, 8, false, false);
+    test_assert_equal_int("front before pop", 0, linkarray_front(test_array, int));
+    linkarray_pop_front(test_array);
+    _test_linkarray_state(test_array, 0, 8, true, false);
 }
 
 static void _test_linkarray__pop_front__many_elements([[maybe_unused]] void* userstate)
 {
     struct LinkArray* test_array = userstate;
 
+    _test_linkarray_state(test_array, 8, 8, false, true);
+
     for(int i = 0; i < 8; ++i)
     {
-        int expect = (7 - i) * 7;
-        int elem = linkarray_pop_front(test_array, int);
-        test_assert_equal_int("popped elem", expect, elem);
+        int expect_before = i * 7;
+        int expect_after  = (i+1) * 7;
+
+        test_assert_equal_int("front before pop", expect_before, linkarray_front(test_array, int));
+        linkarray_pop_front(test_array);
     }
 
-    _test_linkarray_state(test_array, 0, 8, -1, 0);
+    _test_linkarray_state(test_array, 0, 8, true, false);
 }
 
-void test_linkarray_add(void)
+void test_linkarray_push_back(void)
 {
     struct LinkArray test_array;
-    testing_add_group("linkarray add");
-    testing_add_test("add to capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__add__to_capacity, &test_array, sizeof(test_array));
-    testing_add_test("add beyond capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__add__beyond_capacity, &test_array, sizeof(test_array));
+    testing_add_group("linkarray push back");
+    testing_add_test("to capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__push_back__to_capacity, &test_array, sizeof(test_array));
+    testing_add_test("beyond capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__push_back__beyond_capacity, &test_array, sizeof(test_array));
 }
 
 void test_linkarray_pop_front(void)
@@ -122,8 +132,95 @@ void test_linkarray_pop_front(void)
     testing_add_test("pop front many elements", &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements, &_test_linkarray__pop_front__many_elements, &test_array, sizeof(test_array));
 }
 
+static void _test_linkarray__clear__no_elements(void* userstate)
+{
+    struct LinkArray* test_array = userstate;
+    test_assert_equal_int("count", 0, test_array->count);
+
+    linkarray_clear(test_array);
+
+    test_assert_equal_int("count", 0, test_array->count);
+}
+
+static void _test_linkarray__clear__many_elements(void* userstate)
+{
+    struct LinkArray* test_array = userstate;
+    test_assert_nequal_int("count", 0, test_array->count);
+
+    linkarray_clear(test_array);
+
+    test_assert_equal_int("count", 0, test_array->count);
+}
+
+void test_linkarray_clear(void)
+{
+    struct LinkArray test_array;
+    testing_add_group("linkarray clear");
+    testing_add_test("clear, no elements", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__clear__no_elements, &test_array, sizeof(test_array));
+    testing_add_test("clear, many elements", &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements, &_test_linkarray__clear__many_elements, &test_array, sizeof(test_array));
+}
+
+void _test_linkarray_iterator__traversal__no_gaps(void* userstate)
+{
+    struct LinkArray* array = userstate;
+
+    int i = 0;
+    for(struct LinkArrayIt it = linkarray_begin(array); !linkarray_it_eq(it, linkarray_end(array)); it = linkarray_it_next(it))
+    {
+        int expect = i * 7;
+        int actual = linkarray_it_get(it, int);
+        test_assert_equal_int("elem value", expect, actual);
+
+        ++i;
+    }
+}
+
+void _test_linkarray_iterator__traversal__some_elements_removed(void* userstate)
+{
+    struct LinkArray* array = userstate;
+
+    for(int i = 0; i < 4; ++i)
+    {
+        linkarray_pop_at(array, i+1);
+    }
+
+    int expect = 0;
+    for(struct LinkArrayIt it = linkarray_begin(array); !linkarray_it_eq(it, linkarray_end(array)); it = linkarray_it_next(it))
+    {
+        test_assert_equal_int("elem value", expect * 7, linkarray_it_get(it, int));
+        expect += 2;
+    }
+
+    _test_linkarray_state(array, 4, 8, false, false);
+}
+
+void _test_linkarray_iterator__traversal__all_elements_removed(void* userstate)
+{
+    struct LinkArray* array = userstate;
+
+    linkarray_clear(array);
+
+    int iterations = 0;
+    for(struct LinkArrayIt it = linkarray_begin(array); !linkarray_it_eq(it, linkarray_end(array)); it = linkarray_it_next(it))
+    {
+        ++iterations;
+    }
+
+    test_assert_equal_int("iterations", 0, iterations);
+}
+
+void test_linkarray_iterator(void)
+{
+    struct LinkArray test_array;
+    testing_add_group("linkarray iterator");
+    testing_add_test("traversal, no gaps", &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements, &_test_linkarray_iterator__traversal__no_gaps, &test_array, sizeof(test_array));
+    testing_add_test("traversal, some elements removed", &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements, &_test_linkarray_iterator__traversal__some_elements_removed, &test_array, sizeof(test_array));
+    testing_add_test("traversal, all elements removed", &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements, &_test_linkarray_iterator__traversal__all_elements_removed, &test_array, sizeof(test_array));
+}
+
 void test_linkarray_run_all(void)
 {
-    test_linkarray_add();
+    test_linkarray_push_back();
     test_linkarray_pop_front();
+    test_linkarray_iterator();
 }
