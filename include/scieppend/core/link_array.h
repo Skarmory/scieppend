@@ -15,7 +15,7 @@ struct LinkArray
     int capacity;
     int usedhead;
     int freehead;
-    char* nodes;
+    void* nodes;
 };
 
 struct LinkArrayIt
