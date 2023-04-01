@@ -49,6 +49,8 @@ bool test_assert_equal_float(const char* case_name, const float expect, const fl
 bool test_assert_not_null(const char* case_name, void* value);
 bool test_assert_null(const char* case_name, void* value);
 
+bool test_assert_nequal_int(const char* case_name, const int expect, const int actual);
+
 void test_init(void);
 void test_uninit(void);
 

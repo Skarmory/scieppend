@@ -171,6 +171,16 @@ bool test_assert_null(const char* case_name, void* value)
     return success;
 }
 
+bool test_assert_nequal_int(const char* case_name, const int expect, const int actual)
+{
+    bool success = (expect != actual);
+    case_name = case_name ? case_name : "Test integer not equal";
+
+    _add_test_case(success, "\t%s: expect not \"%d\", actual \"%d\"", case_name, expect, actual);
+
+    return success;
+}
+
 void test_init(void)
 {
     _testing.logfile = stdout;
