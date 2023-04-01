@@ -9,12 +9,15 @@
 
 static const char* C_SUCCESS_STR = "SUCCESS";
 static const char* C_FAILURE_STR = "FAILURE";
-static const int   C_SUCCESS_STR_SIZE = 7;
+static const char* C_SUCCESS_STR_COLOUR = "\033[32mSUCCESS\033[0m";
+static const char* C_FAILURE_STR_COLOUR = "\033[31mFAILURE\033[0m";
+static const int   C_SUCCESS_STR_SIZE_MAX = 20;
 
 static struct
 {
     FILE*  logfile;
     int    longest_output;
+    bool   ansi_colours;
 
     struct TestGroup* group_head;
     struct TestGroup* group_tail;
@@ -88,7 +91,14 @@ static void _default_teardown([[maybe_unused]] void* userstate)
 
 static const char* _success_str(bool success)
 {
-    return success ? C_SUCCESS_STR : C_FAILURE_STR;
+    if(_testing.ansi_colours)
+    {
+        return success ? C_SUCCESS_STR_COLOUR : C_FAILURE_STR_COLOUR;
+    }
+    else
+    {
+        return success ? C_SUCCESS_STR : C_FAILURE_STR;
+    }
 }
 
 bool test_assert_equal_char_buffer(const char* case_name, const char* expect, const char* actual)
@@ -181,10 +191,11 @@ bool test_assert_nequal_int(const char* case_name, const int expect, const int a
     return success;
 }
 
-void test_init(void)
+void test_init(bool ansi_colours)
 {
     _testing.logfile = stdout;
     _testing.longest_output = 0;
+    _testing.ansi_colours = ansi_colours;
     _testing.group_head = NULL;
     _testing.group_tail = NULL;
     _testing.current_test = NULL;
@@ -300,7 +311,7 @@ void testing_run_tests(void)
 
 void testing_report(void)
 {
-    int output_buffer_length = _testing.longest_output + C_SUCCESS_STR_SIZE + 2;
+    int output_buffer_length = _testing.longest_output + C_SUCCESS_STR_SIZE_MAX + 2;
     char* output = malloc(output_buffer_length);
     memset(output, '\0', output_buffer_length);
 
@@ -314,7 +325,7 @@ void testing_report(void)
             {
                 memset(output, ' ', output_buffer_length - 1);
                 memcpy(output, tc->msg, strlen(tc->msg));
-                memcpy(output + _testing.longest_output + 1, _success_str(tc->success), C_SUCCESS_STR_SIZE);
+                memcpy(output + _testing.longest_output + 1, _success_str(tc->success), C_SUCCESS_STR_SIZE_MAX);
                 fprintf(stdout, "\t\t%s\n", output);
             }
         }

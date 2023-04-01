@@ -6,7 +6,7 @@
 
 int main(int argc, char** argv)
 {
-    test_init();
+    test_init(true);
 
     test_array_run_all();
     test_stack_array_run_all();

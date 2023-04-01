@@ -51,7 +51,7 @@ bool test_assert_null(const char* case_name, void* value);
 
 bool test_assert_nequal_int(const char* case_name, const int expect, const int actual);
 
-void test_init(void);
+void test_init(bool ansi_colours);
 void test_uninit(void);
 
 void testing_add_group(char name[]);

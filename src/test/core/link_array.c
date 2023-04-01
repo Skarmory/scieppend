@@ -179,19 +179,15 @@ static void _test_linkarray__clear__no_elements(void* userstate)
 {
     struct LinkArray* test_array = userstate;
     test_assert_equal_int("count", 0, test_array->count);
-
     linkarray_clear(test_array);
-
     test_assert_equal_int("count", 0, test_array->count);
 }
 
 static void _test_linkarray__clear__many_elements(void* userstate)
 {
     struct LinkArray* test_array = userstate;
-    test_assert_nequal_int("count", 0, test_array->count);
-
+    test_assert_equal_int("count", 8, test_array->count);
     linkarray_clear(test_array);
-
     test_assert_equal_int("count", 0, test_array->count);
 }
 
