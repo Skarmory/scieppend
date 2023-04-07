@@ -125,6 +125,32 @@ static void _test_linkarray__push_front__beyond_capacity([[maybe_unused]] void* 
     }
 }
 
+static void _test_linkarray__pop_back__single_element([[maybe_unused]] void* userstate)
+{
+    struct LinkArray* test_array = userstate;
+    _test_linkarray_state(test_array, 1, 8, false, false);
+    test_assert_equal_int("back before pop", 7, linkarray_back(test_array, int));
+    linkarray_pop_back(test_array);
+    _test_linkarray_state(test_array, 0, 8, true, false);
+}
+
+static void _test_linkarray__pop_back__many_elements([[maybe_unused]] void* userstate)
+{
+    struct LinkArray* test_array = userstate;
+
+    _test_linkarray_state(test_array, 8, 8, false, true);
+
+    for(int i = 0; i < 8; ++i)
+    {
+        int expect_before = (7 - i) * 7;
+
+        test_assert_equal_int("back before pop", expect_before, linkarray_back(test_array, int));
+        linkarray_pop_back(test_array);
+    }
+
+    _test_linkarray_state(test_array, 0, 8, true, false);
+}
+
 static void _test_linkarray__pop_front__single_element([[maybe_unused]] void* userstate)
 {
     struct LinkArray* test_array = userstate;
@@ -165,6 +191,14 @@ void test_linkarray_push_front(void)
     testing_add_group("linkarray push front");
     testing_add_test("to capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__push_front__to_capacity, &test_array, sizeof(test_array));
     testing_add_test("beyond capacity", &_setup_linkarray, &_teardown_linkarray, &_test_linkarray__push_front__beyond_capacity, &test_array, sizeof(test_array));
+}
+
+void test_linkarray_pop_back(void)
+{
+    struct LinkArray test_array;
+    testing_add_group("linkarray pop back");
+    testing_add_test("pop back single element", &_setup_linkarray_single_element, &_teardown_linkarray_single_element, &_test_linkarray__pop_back__single_element, &test_array, sizeof(test_array));
+    testing_add_test("pop back many elements", &_setup_linkarray_many_elements, &_teardown_linkarray_many_elements, &_test_linkarray__pop_back__many_elements, &test_array, sizeof(test_array));
 }
 
 void test_linkarray_pop_front(void)
@@ -261,6 +295,7 @@ void test_linkarray_run_all(void)
 {
     test_linkarray_push_back();
     test_linkarray_push_front();
+    test_linkarray_pop_back();
     test_linkarray_pop_front();
     test_linkarray_clear();
     test_linkarray_iterator();
