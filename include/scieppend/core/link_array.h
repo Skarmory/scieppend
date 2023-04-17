@@ -53,6 +53,7 @@ void linkarray_clear(struct LinkArray* array);
 void linkarray_pop_front(struct LinkArray* array);
 void linkarray_pop_back(struct LinkArray* array);
 void linkarray_pop_at(struct LinkArray* array, int index);
+void linkarray_emplace_back(struct LinkArray* array, void* args);
 
 // Iterator functions
 

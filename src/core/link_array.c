@@ -1,5 +1,6 @@
 #include "scieppend/core/link_array.h"
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -171,7 +172,7 @@ static void _internal_pop(struct LinkArray* array, int head_or_tail)
     }
 }
 
-static void _internal_push(struct LinkArray* array, void* item, bool head)
+static struct LinkArrayNode* _internal_get_next_node(struct LinkArray* array, bool head)
 {
     if(array->count == array->capacity)
     {
@@ -181,11 +182,22 @@ static void _internal_push(struct LinkArray* array, void* item, bool head)
 
     int next_item_idx = array->freehead;
     struct LinkArrayNode* next_item = _get_node(array, next_item_idx);
-
     _make_used_node(array, next_item, next_item_idx, head);
 
-    memcpy((char*)next_item + (2 * sizeof(int)), item, array->item_size);
+    return next_item;
+}
 
+static void _internal_add_by_copy(struct LinkArray* array, void* item, bool head)
+{
+    struct LinkArrayNode* next_item = _internal_get_next_node(array, head);
+    memcpy((char*)next_item + offsetof(struct LinkArrayNode, data) /*(2 * sizeof(int))*/, item, array->item_size);
+    ++array->count;
+}
+
+static void _internal_add_by_alloc_func(struct LinkArray* array, void* args, bool head)
+{
+    struct LinkArrayNode* next_item = _internal_get_next_node(array, head);
+    array->alloc(&next_item->data, args);
     ++array->count;
 }
 
@@ -272,12 +284,12 @@ int linkarray_count(struct LinkArray* array)
 
 void linkarray_push_front(struct LinkArray* array, void* item)
 {
-    _internal_push(array, item, true);
+    _internal_add_by_copy(array, item, true);
 }
 
 void linkarray_push_back(struct LinkArray* array, void* item)
 {
-    _internal_push(array, item, false);
+    _internal_add_by_copy(array, item, false);
 }
 
 void linkarray_clear(struct LinkArray* array)
@@ -343,6 +355,11 @@ void linkarray_pop_at(struct LinkArray* array, int index)
             array->free(&pop_this->data);
         }
     }
+}
+
+void linkarray_emplace_back(struct LinkArray* array, void* args)
+{
+    _internal_add_by_alloc_func(array, args, false);
 }
 
 struct LinkArrayIt linkarray_begin(struct LinkArray* array)
