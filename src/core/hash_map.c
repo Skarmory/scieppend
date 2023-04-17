@@ -3,25 +3,50 @@
 #include "scieppend/core/hash.h"
 #include "scieppend/core/link_array.h"
 
-static const C_HASH_MAP_BUCKET_CAPACITY       = 4;
-static const C_HASH_MAP_DEFAULT_BUCKETS_COUNT = 16;
-static const C_HASH_MAP_DEFAULT_DATA_CAPACITY = C_HASH_MAP_DEFAULT_BUCKETS_COUNT * C_HASH_MAP_BUCKET_CAPACITY;
-static float C_HASH_MAP_LOAD_FACTOR_THRESHOLD = 0.7f;
+#include <stdlib.h>
+#include <string.h>
 
-struct Bucket
+static const int   C_HASH_MAP_BUCKET_CAPACITY      = 16;
+static const int   C_HASH_MAP_DEFAULT_BUCKET_COUNT = 16;
+static const int   C_HASH_MAP_DEFAULT_BUCKET_ITEMS_CAPACITY = C_HASH_MAP_DEFAULT_BUCKET_COUNT * C_HASH_MAP_BUCKET_CAPACITY;
+static const float C_HASH_MAP_LOAD_FACTOR_THRESHOLD = 0.7f;
+
+struct HashMapBucketItemArgs
 {
-    int              hashed_key;
-    struct LinkArray data;
+    int   key;
+    void* next;
+    void* data;
+    int   data_size;
 };
 
-static float _hash_map_load_factor(struct HashMap* map)
+static inline void* _get_bucket_item_data(struct HashMapBucketItem* item)
 {
-    return (float)map->size / (float)map->buckets_count;
+    return (char*)item + sizeof(int) + sizeof(struct HashMapBucketItem*);
+}
+
+static inline float _hash_map_load_factor(struct HashMap* map)
+{
+    return (float)hash_map_count(map) / (float)map->bucket_count;
+}
+
+static inline bool _hash_map_need_resize(struct HashMap* map)
+{
+    return _hash_map_load_factor(map) > C_HASH_MAP_LOAD_FACTOR_THRESHOLD;
 }
 
 static float _hash_map_rehash(struct HashMap* map)
 {
     return 0.0f;
+}
+
+static void _hash_map_bucket_item_alloc(void* item, void* args)
+{
+    struct HashMapBucketItem* bucket_item = item;
+    struct HashMapBucketItemArgs* bucket_args = args;
+
+    bucket_item->key = bucket_args->key;
+    bucket_item->next = bucket_args->next;
+    memcpy(_get_bucket_item_data(bucket_item), bucket_args->data, bucket_args->data_size);
 }
 
 struct HashMap* hash_map_new(int item_size)
@@ -33,80 +58,87 @@ struct HashMap* hash_map_new(int item_size)
 
 void hash_map_free(struct HashMap* map)
 {
-    free(map->data);
-    free(map->bucket_data);
-    free(map->buckets);
+    hash_map_uninit(map);
     free(map);
 }
 
 void hash_map_init(struct HashMap* map, int item_size)
 {
-    map->item_size     = item_size;
-    map->item_count    = 0;
-    map->buckets_count = C_HASH_MAP_DEFAULT_BUCKETS_COUNT;
-    map->buckets       = malloc(sizeof(struct Bucket) * C_HASH_MAP_DEFAULT_BUCKETS_COUNT);
+    map->item_size    = item_size;
+    map->bucket_count = C_HASH_MAP_DEFAULT_BUCKET_COUNT;
+    map->buckets      = malloc(sizeof(struct HashMapBucket) * C_HASH_MAP_DEFAULT_BUCKET_COUNT);
 
-    for(int i = 0; i < C_HASH_MAP_DEFAULT_BUCKETS_COUNT; ++i)
+    int bucket_item_size = item_size + sizeof(struct HashMapBucketItem*) + sizeof(int);
+
+    linkarray_init(&map->bucket_items, bucket_item_size, C_HASH_MAP_DEFAULT_BUCKET_ITEMS_CAPACITY, &_hash_map_bucket_item_alloc, NULL);
+
+    for(int i = 0; i < C_HASH_MAP_DEFAULT_BUCKET_COUNT; ++i)
     {
-        struct Bucket* bucket = &((struct Bucket*)map->buckets)[i];
-        bucket->hashed_key = -1;
-        link_array_init(&bucket->data, item_size, C_HASH_MAP_BUCKET_CAPACITY);
+        struct HashMapBucket* bucket = &map->buckets[i];
+        bucket->count    = 0;
+        bucket->items    = NULL;
     }
 }
 
 void hash_map_uninit(struct HashMap* map)
 {
-    for(int i = 0; i < map->bucket_count; ++i)
-    {
-        struct Bucket* bucket = &((struct Bucket*)map->buckets)[i];
-        link_array_uninit(&bucket->data);
-    }
-
+    linkarray_uninit(&map->bucket_items);
     free(map->buckets);
+
+    map->buckets      = NULL;
+    map->item_size    = 0;
+    map->bucket_count = 0;
 }
 
 int hash_map_count(struct HashMap* map)
 {
-    return map->item_count;
+    return linkarray_count(&map->bucket_items);
 }
 
 int hash_map_capacity(struct HashMap* map)
 {
-    int capacity = 0;
-
-    for(int i = 0; i < map->buckets_count; ++i)
-    {
-        struct Bucket* bucket = &((struct Bucket*)map->buckets)[i];
-        capacity += bucket->data.capacity;
-    }
-
-    return capacity;
+    return map->bucket_count * C_HASH_MAP_BUCKET_CAPACITY;
 }
 
 void hash_map_add(struct HashMap* map, void* key, int key_bytes, void* item)
 {
-    float load_factor = _hash_map_load_factor(map);    
-    if(load_factor > C_HASH_MAP_LOAD_FACTOR_THRESHOLD)
+    if(_hash_map_need_resize(map))
     {
         // Make bigger
     }
 
-    int hashed_key = hash(key, key_bytes); 
-    int bucket_idx = hashed_key & (map->buckets_count - 1);
+    int hashed_key = hash(key, key_bytes);
+    int bucket_idx = hashed_key & (map->bucket_count - 1);
 
-    struct Bucket* bucket = &((struct Bucket*)map->buckets)[bucket_idx];
-    if(bucket->data.count == bucket->data.capacity)
+    struct HashMapBucket* bucket = &map->buckets[bucket_idx];
+    if(bucket->count == C_HASH_MAP_BUCKET_CAPACITY)
     {
         // Need to resize hash map?
     }
 
-    link_array_add(&bucket->data, item);
+    struct HashMapBucketItemArgs bucket_item;
+    bucket_item.key = hashed_key;
+    bucket_item.next = bucket->items;
+    bucket_item.data = item;
+    bucket_item.data_size = map->item_size;
+
+    linkarray_emplace_back(&map->bucket_items, &bucket_item);
+
+    struct HashMapBucketItem* actual_bucket_item = (struct HashMapBucketItem*)linkarray_back_voidp(&map->bucket_items);
+    bucket->items = actual_bucket_item;
 }
 
-void* hash_map_get(struct HashMap* map, void* key, int key_bytes)
+void* hash_map_get_voidp(struct HashMap* map, void* key, int key_bytes)
 {
     int hashed_key = hash(key, key_bytes);
-    int bucket_idx = hashed_key & (map->buckets_count - 1);
+    int bucket_idx = hashed_key & (map->bucket_count - 1);
 
-    struct Bucket* bucket = &((struct Bucket*)map->buckets)[bucket_idx];
+    struct HashMapBucket* bucket = &map->buckets[bucket_idx];
+    struct HashMapBucketItem* bucket_item = bucket->items;
+    while(bucket_item != NULL && bucket_item->key != hashed_key)
+    {
+        bucket_item = bucket_item->next;
+    }
+
+    return _get_bucket_item_data(bucket_item);
 }
