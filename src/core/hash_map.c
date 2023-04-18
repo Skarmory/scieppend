@@ -3,6 +3,7 @@
 #include "scieppend/core/hash.h"
 #include "scieppend/core/link_array.h"
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,7 +22,7 @@ struct HashMapBucketItemArgs
 
 static inline void* _get_bucket_item_data(struct HashMapBucketItem* item)
 {
-    return (char*)item + sizeof(int) + sizeof(struct HashMapBucketItem*);
+    return item + offsetof(struct HashMapBucketItem, data);
 }
 
 static inline float _hash_map_load_factor(struct HashMap* map)
