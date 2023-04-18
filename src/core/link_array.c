@@ -14,6 +14,11 @@ static inline int _get_offset_bytes(struct LinkArray* array, int idx)
     return idx * _node_bytes(array);
 }
 
+static inline void* _get_node_data(struct LinkArrayNode* node)
+{
+    return node + offsetof(struct LinkArrayNode, data);
+}
+
 static inline struct LinkArrayNode* _get_node(struct LinkArray* array, int idx)
 {
     if(idx < 0 || idx >= array->capacity)
@@ -190,14 +195,14 @@ static struct LinkArrayNode* _internal_get_next_node(struct LinkArray* array, bo
 static void _internal_add_by_copy(struct LinkArray* array, void* item, bool head)
 {
     struct LinkArrayNode* next_item = _internal_get_next_node(array, head);
-    memcpy((char*)next_item + offsetof(struct LinkArrayNode, data) /*(2 * sizeof(int))*/, item, array->item_size);
+    memcpy(_get_node_data(next_item), item, array->item_size);
     ++array->count;
 }
 
 static void _internal_add_by_alloc_func(struct LinkArray* array, void* args, bool head)
 {
     struct LinkArrayNode* next_item = _internal_get_next_node(array, head);
-    array->alloc(&next_item->data, args);
+    array->alloc(_get_node_data(next_item), args);
     ++array->count;
 }
 
@@ -300,36 +305,36 @@ void linkarray_clear(struct LinkArray* array)
     }
 }
 
-void** linkarray_front_voidp(struct LinkArray* array)
+void* linkarray_front_voidp(struct LinkArray* array)
 {
     int peek_idx = array->usedhead;
     struct LinkArrayNode* peek_this = _get_node(array, peek_idx);
 
     if(peek_this)
     {
-        return &peek_this->data;
+        return _get_node_data(peek_this);
     }
 
     return NULL;
 }
 
-void** linkarray_back_voidp(struct LinkArray* array)
+void* linkarray_back_voidp(struct LinkArray* array)
 {
     int peek_idx = array->usedtail;
     struct LinkArrayNode* peek_this = _get_node(array, peek_idx);
 
     if(peek_this)
     {
-        return &peek_this->data;
+        return _get_node_data(peek_this);
     }
 
     return NULL;
 }
 
-void** linkarray_at_voidp(struct LinkArray* array, int index)
+void* linkarray_at_voidp(struct LinkArray* array, int index)
 {
     struct LinkArrayNode* node = _internal_at(array, index);
-    return &node->data;
+    return _get_node_data(node);
 }
 
 void linkarray_pop_front(struct LinkArray* array)
@@ -391,8 +396,8 @@ struct LinkArrayIt linkarray_it_next(struct LinkArrayIt it)
     return next;
 }
 
-void** linkarray_it_get_voidp(struct LinkArrayIt it)
+void* linkarray_it_get_voidp(struct LinkArrayIt it)
 {
     struct LinkArrayNode* node = _get_node(it.array, it.index);
-    return &node->data;
+    return _get_node_data(node);
 }
