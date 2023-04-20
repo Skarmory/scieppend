@@ -20,9 +20,16 @@ struct HashMapBucketItemArgs
     int   data_size;
 };
 
+// Calculate the aligned data size of a HashMapBucketItem
+// Note: this assumes that data_size has a natural alignment of <= 8 bytes
+static inline int _bucket_item_size_aligned(int data_size)
+{
+    return offsetof(struct HashMapBucketItem, data) + data_size;
+}
+
 static inline void* _get_bucket_item_data(struct HashMapBucketItem* item)
 {
-    return item + offsetof(struct HashMapBucketItem, data);
+    return (char*)item + offsetof(struct HashMapBucketItem, data);
 }
 
 static inline float _hash_map_load_factor(struct HashMap* map)
@@ -69,9 +76,7 @@ void hash_map_init(struct HashMap* map, int item_size)
     map->bucket_count = C_HASH_MAP_DEFAULT_BUCKET_COUNT;
     map->buckets      = malloc(sizeof(struct HashMapBucket) * C_HASH_MAP_DEFAULT_BUCKET_COUNT);
 
-    int bucket_item_size = item_size + sizeof(struct HashMapBucketItem*) + sizeof(int);
-
-    linkarray_init(&map->bucket_items, bucket_item_size, C_HASH_MAP_DEFAULT_BUCKET_ITEMS_CAPACITY, &_hash_map_bucket_item_alloc, NULL);
+    linkarray_init(&map->bucket_items, _bucket_item_size_aligned(item_size), C_HASH_MAP_DEFAULT_BUCKET_ITEMS_CAPACITY, &_hash_map_bucket_item_alloc, NULL);
 
     for(int i = 0; i < C_HASH_MAP_DEFAULT_BUCKET_COUNT; ++i)
     {
