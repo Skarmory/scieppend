@@ -6,7 +6,7 @@
 
 static inline int _node_bytes(struct LinkArray* array)
 {
-    return (2 * sizeof(int)) + array->item_size;
+    return offsetof(struct LinkArrayNode, data) + array->item_size;
 }
 
 static inline int _get_offset_bytes(struct LinkArray* array, int idx)
@@ -16,7 +16,7 @@ static inline int _get_offset_bytes(struct LinkArray* array, int idx)
 
 static inline void* _get_node_data(struct LinkArrayNode* node)
 {
-    return node + offsetof(struct LinkArrayNode, data);
+    return (char*)node + offsetof(struct LinkArrayNode, data);
 }
 
 static inline struct LinkArrayNode* _get_node(struct LinkArray* array, int idx)
@@ -172,7 +172,7 @@ static void _internal_pop(struct LinkArray* array, int head_or_tail)
         --array->count;
         if(array->free)
         {
-            array->free(&pop_this->data);
+            array->free(_get_node_data(pop_this));
         }
     }
 }
@@ -263,8 +263,7 @@ void linkarray_init(struct LinkArray* array, int item_size, int capacity, alloc_
     array->alloc = alloc;
     array->free  = free;
 
-    int per_node_size = 2 * sizeof(int) + array->item_size;
-    array->nodes = malloc(per_node_size * array->capacity);
+    array->nodes = malloc(_node_bytes(array) * array->capacity);
 
     _link_nodes(array, 0);
 }
@@ -357,7 +356,7 @@ void linkarray_pop_at(struct LinkArray* array, int index)
         --array->count;
         if(array->free)
         {
-            array->free(&pop_this->data);
+            array->free(_get_node_data(pop_this));
         }
     }
 }
