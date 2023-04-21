@@ -101,11 +101,6 @@ int hash_map_count(struct HashMap* map)
     return linkarray_count(&map->bucket_items);
 }
 
-int hash_map_capacity(struct HashMap* map)
-{
-    return map->bucket_count * C_HASH_MAP_BUCKET_CAPACITY;
-}
-
 void hash_map_add(struct HashMap* map, void* key, int key_bytes, void* item)
 {
     if(_hash_map_need_resize(map))
