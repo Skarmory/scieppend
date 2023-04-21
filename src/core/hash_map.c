@@ -32,6 +32,16 @@ static inline void* _get_bucket_item_data(struct HashMapBucketItem* item)
     return (char*)item + offsetof(struct HashMapBucketItem, data);
 }
 
+static inline void _init_hash_map_buckets(struct HashMap* map)
+{
+    for(int i = 0; i < map->bucket_count; ++i)
+    {
+        struct HashMapBucket* bucket = &map->buckets[i];
+        bucket->count = 0;
+        bucket->items = NULL;
+    }
+}
+
 static inline float _hash_map_load_factor(struct HashMap* map)
 {
     return (float)hash_map_count(map) / (float)map->bucket_count;
@@ -42,9 +52,31 @@ static inline bool _hash_map_need_resize(struct HashMap* map)
     return _hash_map_load_factor(map) > C_HASH_MAP_LOAD_FACTOR_THRESHOLD;
 }
 
-static float _hash_map_rehash(struct HashMap* map)
+static void _hash_map_resize(struct HashMap* map)
 {
-    return 0.0f;
+    int new_bucket_count = map->bucket_count << 1;
+
+    map->buckets = realloc(map->buckets, sizeof(struct HashMapBucket) * new_bucket_count);
+    if(!map->buckets)
+    {
+        abort();
+    }
+
+    map->bucket_count = new_bucket_count;
+
+    _init_hash_map_buckets(map);
+
+    for(struct LinkArrayIt it = linkarray_begin(&map->bucket_items); !linkarray_it_eq(it, linkarray_end(&map->bucket_items)); it = linkarray_it_next(it))
+    {
+        struct HashMapBucketItem* bucket_item = linkarray_it_get_voidp(it);
+
+        int bucket_idx = bucket_item->key & (map->bucket_count - 1);
+
+        struct HashMapBucket* bucket = &map->buckets[bucket_idx];
+        bucket_item->next = bucket->items;
+        bucket->items = bucket_item;
+        ++bucket->count;
+    }
 }
 
 static void _hash_map_bucket_item_alloc(void* item, void* args)
@@ -78,12 +110,7 @@ void hash_map_init(struct HashMap* map, int item_size)
 
     linkarray_init(&map->bucket_items, _bucket_item_size_aligned(item_size), C_HASH_MAP_DEFAULT_BUCKET_ITEMS_CAPACITY, &_hash_map_bucket_item_alloc, NULL);
 
-    for(int i = 0; i < C_HASH_MAP_DEFAULT_BUCKET_COUNT; ++i)
-    {
-        struct HashMapBucket* bucket = &map->buckets[i];
-        bucket->count    = 0;
-        bucket->items    = NULL;
-    }
+    _init_hash_map_buckets(map);
 }
 
 void hash_map_uninit(struct HashMap* map)
@@ -105,7 +132,7 @@ void hash_map_add(struct HashMap* map, void* key, int key_bytes, void* item)
 {
     if(_hash_map_need_resize(map))
     {
-        // Make bigger
+        _hash_map_resize(map);
     }
 
     int hashed_key = hash(key, key_bytes);
@@ -127,6 +154,8 @@ void hash_map_add(struct HashMap* map, void* key, int key_bytes, void* item)
 
     struct HashMapBucketItem* actual_bucket_item = (struct HashMapBucketItem*)linkarray_back_voidp(&map->bucket_items);
     bucket->items = actual_bucket_item;
+
+    ++bucket->count;
 }
 
 void* hash_map_get_voidp(struct HashMap* map, void* key, int key_bytes)
