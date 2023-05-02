@@ -42,9 +42,9 @@ void*  linkarray_front_voidp(struct LinkArray* array);
 void*  linkarray_back_voidp(struct LinkArray* array);
 void*  linkarray_at_voidp(struct LinkArray* array, int index);
 
-#define linkarray_front(array, type) ((type) *((type*)linkarray_front_voidp((array))))
-#define linkarray_back(array, type) ((type) *((type*)linkarray_back_voidp((array))))
-#define linkarray_at(array, index, type) ((type) *((type*)linkarray_at_voidp((array), (index))))
+#define linkarray_front(array, type) (*(type*)linkarray_front_voidp((array)))
+#define linkarray_back(array, type) (*(type*)linkarray_back_voidp((array)))
+#define linkarray_at(array, index, type) (*(type*)linkarray_at_voidp((array), (index)))
 
 // Modifiers
 void linkarray_push_front(struct LinkArray* array, void* item);
@@ -63,6 +63,6 @@ bool               linkarray_it_eq(struct LinkArrayIt lhs, struct LinkArrayIt rh
 struct LinkArrayIt linkarray_it_next(struct LinkArrayIt it);
 void*              linkarray_it_get_voidp(struct LinkArrayIt it);
 
-#define linkarray_it_get(it, type) ((type) *((type*)linkarray_it_get_voidp((it))))
+#define linkarray_it_get(it, type) (*(type*)linkarray_it_get_voidp((it)))
 
 #endif
