@@ -1,6 +1,8 @@
 #ifndef SCIEPPEND_CORE_CACHE_H
 #define SCIEPPEND_CORE_CACHE_H
 
+#include "scieppend/core/container_common.h"
+
 #include <stdbool.h>
 
 /* Data container that stores items in contiguous memory.
@@ -21,9 +23,6 @@
  *       match the cache which they are passed to.
  */
 
-typedef void(*alloc_function)(void*, void*);
-typedef void(*free_function)(void*);
-
 extern const int C_NULL_CACHE_HANDLE;
 
 struct Cache
@@ -35,8 +34,8 @@ struct Cache
     int   item_size;
     int   capacity;
     int   free_head;
-    alloc_function alloc_func;
-    free_function  free_func;
+    alloc_fn alloc_func;
+    free_fn  free_func;
 };
 
 struct CacheIt
@@ -47,11 +46,11 @@ struct CacheIt
 
 /* Create a new cache with given capacity and optional destructor for elements.
  */
-struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, free_function free_func);
+struct Cache* cache_new(int item_size, int capacity, alloc_fn alloc_func, free_fn free_func);
 
 /* Constructs a new cache in-place.
  */
-void cache_init(struct Cache* cache, int item_size, int capacity, alloc_function alloc_func, free_function free_func);
+void cache_init(struct Cache* cache, int item_size, int capacity, alloc_fn alloc_func, free_fn free_func);
 
 /* Frees all the elements, calling the destructor if specified, then frees the cache.
  */

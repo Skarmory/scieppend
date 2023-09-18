@@ -207,7 +207,7 @@ static void _null_free([[maybe_unused]] void* item)
 
 // EXTERNAL FUNCS
 
-struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, free_function free_func)
+struct Cache* cache_new(int item_size, int capacity, alloc_fn alloc_func, free_fn free_func)
 {
     assert(capacity <= C_MAX_CAPACITY);
 
@@ -217,7 +217,7 @@ struct Cache* cache_new(int item_size, int capacity, alloc_function alloc_func, 
     return cache;
 }
 
-void cache_init(struct Cache* cache, int item_size, int capacity, alloc_function alloc_func, free_function free_func)
+void cache_init(struct Cache* cache, int item_size, int capacity, alloc_fn alloc_func, free_fn free_func)
 {
     cache->items        = malloc(capacity * item_size);
     cache->handles      = malloc(sizeof(int) * capacity);
