@@ -5,7 +5,7 @@ const int  C_FNV_PRIME = 16777619;
 
 // Simple FNV-1 hash
 // See: https://en.wikipedia.org/wiki/Fowler-Noll-Vo_hash_function
-int hash(char* buffer, int size_bytes)
+int hash(const char* buffer, const int size_bytes)
 {
     int h = C_FNV_OFFSET_BASIS;
 
