@@ -284,7 +284,7 @@ bool cache_stale_handle(struct Cache* cache, int handle)
     return _get_key(handle) != _get_key(cache->handles[_get_idx(handle)]);
 }
 
-int cache_add(struct Cache* cache, void* item)
+int cache_add(struct Cache* cache, const void* item)
 {
     int next_handle = _next_handle(cache);
 

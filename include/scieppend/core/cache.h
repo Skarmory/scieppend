@@ -87,7 +87,7 @@ bool cache_stale_handle(struct Cache* cache, int handle);
  * See allocation process at top of this file for further info.
  * Copies the item.
  */
-int cache_add(struct Cache* cache, void* item);
+int cache_add(struct Cache* cache, const void* item);
 
 /* Constructs an item with the given args and returns a handle to it.
  */
