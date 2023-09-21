@@ -191,6 +191,25 @@ bool test_assert_nequal_int(const char* case_name, const int expect, const int a
     return success;
 }
 
+bool test_assert_item_in_array(const char* case_name, const void* array, const int elem_bytes, const int array_count, const void* item, compare_fn comp)
+{
+    bool success = false;
+    for(int i = 0; i < array_count; ++i)
+    {
+        success |= comp(array + (elem_bytes * i), item);
+
+        if(success)
+        {
+            break;
+        }
+    }
+
+    _add_test_case(success, "\t%s", case_name);
+
+    return success;
+}
+
+
 void test_init(bool ansi_colours)
 {
     _testing.logfile = stdout;

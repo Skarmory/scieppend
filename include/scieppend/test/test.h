@@ -11,6 +11,7 @@
 typedef void(*test_fn)(void* userstate);
 typedef void(*setup_fn)(void* userstate);
 typedef void(*teardown_fn)(void* userstate);
+typedef bool(*compare_fn)(void* lhs, void* rhs);
 
 struct TestCase
 {
@@ -50,6 +51,8 @@ bool test_assert_not_null(const char* case_name, void* value);
 bool test_assert_null(const char* case_name, void* value);
 
 bool test_assert_nequal_int(const char* case_name, const int expect, const int actual);
+
+bool test_assert_item_in_array(const char* case_name, const void* array, const int elem_bytes, const int array_count, const void* item, compare_fn comp);
 
 void test_init(bool ansi_colours);
 void test_uninit(void);
