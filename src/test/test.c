@@ -199,7 +199,7 @@ bool test_assert_item_in_array(const char* case_name, const void* array, const i
     bool success = false;
     for(int i = 0; i < array_count; ++i)
     {
-        success |= comp(array + (elem_bytes * i), item);
+        success |= comp((char*)array + (elem_bytes * i), item);
 
         if(success)
         {
