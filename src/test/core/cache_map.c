@@ -9,10 +9,10 @@ struct CacheMapTestItem
     float f;
 };
 
-static bool _compare_test_item(void* lhs, void* rhs)
+static bool _compare_test_item(const void* lhs, const void* rhs)
 {
-    struct CacheMapTestItem* _lhs = lhs;
-    struct CacheMapTestItem* _rhs = rhs;
+    const struct CacheMapTestItem* _lhs = lhs;
+    const struct CacheMapTestItem* _rhs = rhs;
     return _lhs->i == _rhs->i && _lhs->f == _rhs->f;
 }
 
