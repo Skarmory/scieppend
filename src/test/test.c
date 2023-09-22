@@ -23,6 +23,9 @@ static struct
     struct TestGroup* group_tail;
     struct TestGroup* current_group;
     struct Test*      current_test;
+
+    int success_count;
+    int fail_count;
 } _testing;
 
 static void _testing_add_group(struct TestGroup* group)
@@ -218,6 +221,8 @@ void test_init(bool ansi_colours)
     _testing.group_head = NULL;
     _testing.group_tail = NULL;
     _testing.current_test = NULL;
+    _testing.success_count = 0;
+    _testing.fail_count = 0;
 }
 
 void test_uninit(void)
@@ -321,6 +326,14 @@ void testing_run_tests(void)
             for(struct TestCase* tc = test->case_head; tc != NULL; tc = tc->next)
             {
                 test->success |= tc->success;
+                if(test->success)
+                {
+                    ++_testing.success_count;
+                }
+                else
+                {
+                    ++_testing.fail_count;
+                }
             }
 
             group->success |= test->success;
@@ -349,6 +362,10 @@ void testing_report(void)
             }
         }
     }
+
+    fprintf(stdout, "SUMMARY\n");
+    fprintf(stdout, "\tSuccesses: %d\n", _testing.success_count);
+    fprintf(stdout, "\tFailures: %d\n", _testing.fail_count);
 
     free(output);
 }
