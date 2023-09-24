@@ -99,10 +99,10 @@ static void _resize(struct CacheMap* map)
 
 // CREATIONAL
 
-struct CacheMap* cache_map_new(int item_size)
+struct CacheMap* cache_map_new(int item_size, int capacity, alloc_fn alloc_func, free_fn free_func)
 {
     struct CacheMap* map = malloc(sizeof(struct CacheMap));
-    cache_map_init(map, item_size);
+    cache_map_init(map, item_size, capacity, alloc_func, free_func);
     return map;
 }
 
@@ -112,14 +112,14 @@ void cache_map_free(struct CacheMap* map)
     free(map);
 }
 
-void cache_map_init(struct CacheMap* map, int item_size)
+void cache_map_init(struct CacheMap* map, int item_size, int capacity, alloc_fn alloc_func, free_fn free_func)
 {
     map->item_size = item_size;
     map->bucket_count = C_DEFAULT_BUCKET_COUNT;
     map->bucket_capacity = C_DEFAULT_BUCKET_CAPACITY;
     map->buckets = malloc(map->bucket_capacity * map->bucket_count * sizeof(struct CacheMapBucketItem));
     _init_bucket_items(map->buckets, map->bucket_count, map->bucket_capacity);
-    cache_init(&map->bucket_items, map->item_size, C_DEFAULT_BUCKET_ITEMS_CAPACITY, NULL, NULL);
+    cache_init(&map->bucket_items, map->item_size, capacity, alloc_func, free_func);
 }
 
 void cache_map_uninit(struct CacheMap* map)
@@ -140,6 +140,11 @@ int cache_map_count(struct CacheMap* map)
 void* cache_map_get(struct CacheMap* map, const void* key, int key_bytes)
 {
     int hashed_key = hash(key, key_bytes);
+    return cache_map_get_hashed(map, hashed_key);
+}
+
+void* cache_map_get_hashed(struct CacheMap* map, int hashed_key)
+{
     struct CacheMapBucketItem* bucket_item = _get_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
 
     if(bucket_item == NULL)
@@ -214,6 +219,21 @@ void cache_map_add(struct CacheMap* map, const void* key, int key_bytes, const v
     }
 
     int item_h = cache_add(&map->bucket_items, item);
+
+    int hashed_key = hash(key, key_bytes);
+    struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+    new_bucket_item->key = hashed_key;
+    new_bucket_item->handle = item_h;
+}
+
+void cache_map_emplace(struct CacheMap* map, const void* key, int key_bytes, void* args)
+{
+    if(_need_resize(map))
+    {
+        _resize(map);
+    }
+
+    int item_h = cache_emplace(&map->bucket_items, args);
 
     int hashed_key = hash(key, key_bytes);
     struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
