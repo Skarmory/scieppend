@@ -3,6 +3,8 @@
 
 #include "scieppend/core/cache_map.h"
 
+#include <stddef.h>
+
 struct CacheMapTestItem
 {
     int   i;
@@ -24,7 +26,7 @@ struct CacheMapTestState
 static void _setup(void* userdata)
 {
     struct CacheMapTestState* state = userdata;
-    cache_map_init(&state->map, sizeof(struct CacheMapTestItem));
+    cache_map_init(&state->map, sizeof(struct CacheMapTestItem), 32, NULL, NULL);
 }
 
 static void _teardown(void* userdata)
