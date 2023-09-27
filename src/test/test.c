@@ -169,7 +169,7 @@ bool test_assert_not_null(const char* case_name, void* value)
     bool success = value != NULL;
     case_name = case_name ? case_name : "Test pointer not null";
 
-    _add_test_case(success, "\t%s");
+    _add_test_case(success, "\t%s", case_name);
 
     return success;
 }
@@ -179,7 +179,7 @@ bool test_assert_null(const char* case_name, void* value)
     bool success = value == NULL;
     case_name = case_name ? case_name : "Test pointer is null";
 
-    _add_test_case(success, "\t%s");
+    _add_test_case(success, "\t%s", case_name);
 
     return success;
 }
