@@ -99,7 +99,7 @@ void string_format(struct string* str, const char* format, ...)
     }
 
     va_start(args, format);
-    vsnprintf(str->buffer, buffer_size, format, args);
+    vsnprintf(str->buffer, buffer_size + 1, format, args);
     va_end(args);
 }
 
