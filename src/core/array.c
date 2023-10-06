@@ -24,7 +24,7 @@ static char* _array_next_element(struct Array* array)
         _array_realloc(array, array->capacity << 1);
     }
 
-    return &array->data[(array->item_size * array->count)];
+    return array->data + (array->item_size * array->count);
 }
 
 struct Array* array_new(int item_size, int capacity, alloc_fn alloc_func, free_fn free_func)
@@ -93,13 +93,13 @@ void* array_emplace(struct Array* array, void* args)
 
 void array_remove_at(struct Array* array, int index)
 {
-    if(array->free_func)
-    {
-        array->free_func(&array->data[array->item_size * index]);
-    }
-
     void* dst = array->data + (array->item_size * index);
     void* src = array->data + (array->item_size * (array->count-1));
+
+    if(array->free_func)
+    {
+        array->free_func(dst);
+    }
 
     memcpy(dst, src, array->item_size);
     --array->count;
@@ -107,7 +107,7 @@ void array_remove_at(struct Array* array, int index)
 
 void* array_get(const struct Array* array, int index)
 {
-    return &array->data[array->item_size * index];
+    return array->data + (array->item_size * index);
 }
 
 void array_shrink(struct Array* array)
@@ -119,7 +119,7 @@ int array_find(const struct Array* array, const void* item, compare_fn comp_func
 {
     for(int i = 0; i < array->count; ++i)
     {
-        if(comp_func(&array->data[array->item_size * i], item))
+        if(comp_func(array_get(array, i), item))
         {
             return i;
         }
