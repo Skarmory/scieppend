@@ -34,7 +34,7 @@ static void _setup(void* userstate)
     string_init(&state->component_A_name, C_TEST_COMPONENT_A_NAME);
     string_init(&state->component_B_name, C_TEST_COMPONENT_B_NAME);
     string_init(&state->component_C_name, C_TEST_COMPONENT_C_NAME);
-    array_init(&state->required_components, sizeof(struct string), 3, NULL, NULL);
+    array_init(&state->required_components, sizeof(int), 3, NULL, NULL);
     ecs_init();
 }
 
@@ -76,9 +76,9 @@ static void _setup__system(void* userstate)
 
     _setup__component_types(userstate);
 
-    array_add(&state->required_components, &state->component_A_name);
-    array_add(&state->required_components, &state->component_B_name);
-    array_add(&state->required_components, &state->component_C_name);
+    array_add(&state->required_components, &G_TEST_COMPONENT_A_ID);
+    array_add(&state->required_components, &G_TEST_COMPONENT_B_ID);
+    array_add(&state->required_components, &G_TEST_COMPONENT_C_ID);
 
     system_register(&state->sys_name, &_system_update, &state->required_components);
 }
@@ -122,13 +122,16 @@ void _test__system_entity_required_components_added(void* userstate)
 
     EntityHandle handle = entity_create();
 
-    entity_add_component(handle, array_get(&state->required_components, 0));
+    int* component_type_id = array_get(&state->required_components, 0);
+    entity_add_component(handle, *component_type_id);
     test_assert_equal_int("system has entity, 1/3 required components", 0, system_entity_count(&state->sys_name));
 
-    entity_add_component(handle, array_get(&state->required_components, 1));
+    component_type_id = array_get(&state->required_components, 1);
+    entity_add_component(handle, *component_type_id);
     test_assert_equal_int("system has entity, 2/3 required components", 0, system_entity_count(&state->sys_name));
 
-    entity_add_component(handle, array_get(&state->required_components, 2));
+    component_type_id = array_get(&state->required_components, 2);
+    entity_add_component(handle, *component_type_id);
     test_assert_equal_int("system has entity, 3/3 required components", 1, system_entity_count(&state->sys_name));
 }
 
@@ -137,9 +140,15 @@ void _test__system_entity_destroyed(void* userstate)
     struct SystemTestState* state = userstate;
 
     EntityHandle handle = entity_create();
-    entity_add_component(handle, array_get(&state->required_components, 0));
-    entity_add_component(handle, array_get(&state->required_components, 1));
-    entity_add_component(handle, array_get(&state->required_components, 2));
+
+    int component_type_id = *(int*)array_get(&state->required_components, 0);
+    entity_add_component(handle, component_type_id);
+
+    component_type_id = *(int*)array_get(&state->required_components, 1);
+    entity_add_component(handle, component_type_id);
+
+    component_type_id = *(int*)array_get(&state->required_components, 2);
+    entity_add_component(handle, component_type_id);
 
     test_assert_equal_int("system has entity", 1, system_entity_count(&state->sys_name));
 
@@ -153,9 +162,13 @@ void _test__system_update(void* userstate)
     struct SystemTestState* state = userstate;
 
     EntityHandle handle = entity_create();
-    struct ECSTestComponentA* comp_a = entity_add_component(handle, array_get(&state->required_components, 0));
-    struct ECSTestComponentB* comp_b = entity_add_component(handle, array_get(&state->required_components, 1));
-    struct ECSTestComponentC* comp_c = entity_add_component(handle, array_get(&state->required_components, 2));
+
+    int component_type_id = *(int*)array_get(&state->required_components, 0);
+    struct ECSTestComponentA* comp_a = entity_add_component(handle, component_type_id);
+    component_type_id = *(int*)array_get(&state->required_components, 1);
+    struct ECSTestComponentB* comp_b = entity_add_component(handle, component_type_id);
+    component_type_id = *(int*)array_get(&state->required_components, 2);
+    struct ECSTestComponentC* comp_c = entity_add_component(handle, component_type_id);
 
     comp_a->x = 2;
     comp_a->y = 7;

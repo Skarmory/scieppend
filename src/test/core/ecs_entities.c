@@ -101,8 +101,8 @@ static bool _add_component_and_test(EntityHandle handle, const struct string* co
 
     int component_count = entity_component_count(handle);
 
-    entity_add_component(handle, component_name);
-    void* component = entity_get_component(handle, component_name);
+    entity_add_component_by_name(handle, component_name);
+    void* component = entity_get_component_by_name(handle, component_name);
     success |= test_assert_not_null("entity has component", component);
     success |= test_assert_equal_int(case_name, 1, ecs_components_count(component_name));
     success |= test_assert_equal_int("entity components count", component_count + 1, entity_component_count(handle));
@@ -118,8 +118,8 @@ static bool _remove_component_and_test(EntityHandle handle, const struct string*
 
     int component_count = entity_component_count(handle);
 
-    entity_remove_component(handle, component_name);
-    void* component = entity_get_component(handle, component_name);
+    entity_remove_component_by_name(handle, component_name);
+    void* component = entity_get_component_by_name(handle, component_name);
     success |= test_assert_null("entity does not have component", component);
     success |= test_assert_equal_int(case_name, 0, ecs_components_count(component_name));
     success |= test_assert_equal_int("entity components count", component_count - 1, entity_component_count(handle));
@@ -132,7 +132,7 @@ static bool _get_component_and_test(EntityHandle handle, const struct string* co
     char case_name[64];
     snprintf(case_name, 64, "entity has component %s", component_name->buffer);
 
-    void* component = entity_get_component(handle, component_name);
+    void* component = entity_get_component_by_name(handle, component_name);
     return test_assert_not_null(case_name, component);
 }
 
@@ -167,26 +167,26 @@ static void _test__entity_add_remove_component(void* userstate)
 
     _add_component_and_test(handle, &state->component_type_A_name);
 
-    struct ECSTestComponentA* component = entity_get_component(handle, &state->component_type_A_name);
+    struct ECSTestComponentA* component = entity_get_component_by_name(handle, &state->component_type_A_name);
     component->x = 7;
     component->y = 1234;
     component->z = 9876;
 
     component = NULL;
-    component = entity_get_component(handle, &state->component_type_A_name);
+    component = entity_get_component_by_name(handle, &state->component_type_A_name);
     test_component_A_values(component, 7, 1234, 9876);
     _remove_component_and_test(handle, &state->component_type_A_name);
 
     component = NULL;
 
     _add_component_and_test(handle, &state->component_type_A_name);
-    component = entity_get_component(handle, &state->component_type_A_name);
+    component = entity_get_component_by_name(handle, &state->component_type_A_name);
     component->x = 1357;
     component->y = 2468;
     component->z = 3579;
 
     component = NULL;
-    component = entity_get_component(handle, &state->component_type_A_name);
+    component = entity_get_component_by_name(handle, &state->component_type_A_name);
     test_component_A_values(component, 1357, 2468, 3579);
     _remove_component_and_test(handle, &state->component_type_A_name);
 }
@@ -230,7 +230,7 @@ static void _test__entity_component_uniqueness(void* userstate)
     int entity_components = entity_component_count(handle);
     int components = ecs_components_count(&state->component_type_A_name);
 
-    entity_add_component(handle, &state->component_type_A_name);
+    entity_add_component_by_name(handle, &state->component_type_A_name);
     test_assert_equal_int("entity component count", entity_components, entity_component_count(handle));
     test_assert_equal_int("ecs components count", components, ecs_components_count(&state->component_type_A_name));
 

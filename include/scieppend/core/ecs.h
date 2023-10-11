@@ -1,8 +1,6 @@
 #ifndef SCIEPPEND_CORE_ENTITY_H
 #define SCIEPPEND_CORE_ENTITY_H
 
-#define ENTITY_MAX_COMPONENTS 256
-
 #include "scieppend/core/array.h"
 #include "scieppend/core/stack_array.h"
 
@@ -12,6 +10,8 @@ typedef int EntityHandle;
 typedef int ComponentHandle;
 typedef int ComponentTypeHandle;
 typedef void(*system_update_fn)(EntityHandle handle);
+
+extern const int C_NULL_COMPONENT_TYPE;
 
 /* Initialise the internal ECS containers.
  */
@@ -36,11 +36,13 @@ void entity_destroy(EntityHandle id);
 
 /* Adds a new component of the given type to the entity of given id.
  */
-void* entity_add_component(EntityHandle id, const struct string* component_name);
+void* entity_add_component(EntityHandle id, const int component_type_id);
+void* entity_add_component_by_name(EntityHandle id, const struct string* component_name);
 
 /* Removes the given component type from an entity.
  */
-void entity_remove_component(EntityHandle id, const struct string* component_name);
+void entity_remove_component(EntityHandle id, const int component_type_id);
+void entity_remove_component_by_name(EntityHandle id, const struct string* component_name);
 
 /* Get a component from an entity.
  * Return null if no component found.
@@ -51,13 +53,12 @@ void* entity_get_component_by_name(EntityHandle entity_id, const struct string* 
 int entity_component_count(EntityHandle id);
 
 /* Creates a component cache for a particular component type.
- * Returns the id for a component type.
  */
-void component_type_register(const struct string* name, int component_type_size_bytes);
+int component_type_register(const struct string* name, int component_type_size_bytes);
 
 /* Internally creates a system that will call the given function every update cycle.
  */
-void system_register(const struct string* name, system_update_fn update_func, const struct Array* required_components);
+void system_register(const struct string* name, system_update_fn update_func, struct Array* required_components);
 
 /* Iterate over all registered systems and calls their update functions.
  */

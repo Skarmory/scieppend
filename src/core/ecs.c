@@ -19,6 +19,9 @@
 #define DEFAULT_SYSTEM_REQUIRED_COMPONENTS_MAX 4
 #define DEFAULT_ENTITY_COMPONENTS_MAX 8
 
+// Pre-computed hash of "__NullComponentType" string
+const int C_NULL_COMPONENT_TYPE = 2025596145;
+
 // STRUCTS
 
 struct _Entity
@@ -61,7 +64,7 @@ struct _SystemNewArgs
 {
     const struct string* name;
     system_update_fn     update_func;
-    const struct Array*  required_components;
+    struct Array*  required_components;
 };
 
 static struct ECS
@@ -206,16 +209,13 @@ static void _system_alloc(void* new_system, void* new_system_args)
     _new_system->update_func = _args->update_func;
 
     array_init(&_new_system->entities, sizeof(EntityHandle), DEFAULT_SYSTEM_ENTITIES_MAX, NULL, NULL);
-    array_init(&_new_system->required_components, sizeof(int), DEFAULT_SYSTEM_REQUIRED_COMPONENTS_MAX, NULL, NULL);
+    array_copy(&_new_system->required_components, _args->required_components);
 
     // Go through required components and set up event callbacks
-    for(int i = 0; i < array_count(_args->required_components); ++i)
+    for(int i = 0; i < array_count(&_new_system->required_components); ++i)
     {
-        const struct string* component_name = array_get(_args->required_components, i);
-        int hashed_name = string_hash(component_name);
-        array_add(&_new_system->required_components, &hashed_name);
-
-        struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, hashed_name);
+        int* component_type_id = array_get(&_new_system->required_components, i);
+        struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, *component_type_id);
         event_register_observer(&comp_cache->component_added_event, _new_system, &_system_component_added_event_callback);
         event_register_observer(&comp_cache->component_removed_event, _new_system, &_system_component_removed_event_callback);
     }
@@ -316,9 +316,8 @@ void entity_destroy(EntityHandle id)
     cache_remove(&_ecs.entities, id);
 }
 
-void* entity_add_component(EntityHandle entity_handle, const struct string* component_name)
+void* entity_add_component(EntityHandle entity_handle, const int component_type_id)
 {
-    int component_type_id = string_hash(component_name);
     struct _Entity* entity = cache_get(&_ecs.entities, entity_handle);
     struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
 
@@ -347,9 +346,14 @@ void* entity_add_component(EntityHandle entity_handle, const struct string* comp
     return cache_get(&component_cache->components, new_component.id);
 }
 
-void entity_remove_component(EntityHandle entity_handle, const struct string* component_name)
+void* entity_add_component_by_name(EntityHandle entity_handle, const struct string* component_name)
 {
     int component_type_id = string_hash(component_name);
+    return entity_add_component(entity_handle, component_type_id);
+}
+
+void entity_remove_component(EntityHandle entity_handle, const int component_type_id)
+{
     struct _Entity* entity = cache_get(&_ecs.entities, entity_handle);
     struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
 
@@ -368,6 +372,12 @@ void entity_remove_component(EntityHandle entity_handle, const struct string* co
             return;
         }
     }
+}
+
+void entity_remove_component_by_name(EntityHandle entity_handle, const struct string* component_name)
+{
+    int component_type_id = string_hash(component_name);
+    entity_remove_component(entity_handle, component_type_id);
 }
 
 void* entity_get_component(EntityHandle entity_id, int component_type_id)
@@ -398,26 +408,28 @@ int entity_component_count(EntityHandle id)
     return array_count(&entity->components);
 }
 
-void component_type_register(const struct string* name, int component_type_size_bytes)
+int component_type_register(const struct string* name, int component_type_size_bytes)
 {
     int component_type_id = string_hash(name);
     if(cache_map_get_hashed(&_ecs.component_caches, component_type_id))
     {
         // TODO: Log warning
-        return;
+        return C_NULL_COMPONENT_TYPE;
     }
 
     struct _ComponentCacheNewArgs args;
-    args.component_type_id = string_hash(name);
+    args.component_type_id = component_type_id;
     args.item_size = component_type_size_bytes;
     args.capacity = 1024;
     args.alloc_func = NULL;
     args.free_func = NULL;
 
     cache_map_emplace(&_ecs.component_caches, name->buffer, name->size, &args);
+
+    return component_type_id;
 }
 
-void system_register(const struct string* name, system_update_fn update_func, const struct Array* required_components)
+void system_register(const struct string* name, system_update_fn update_func, struct Array* required_components)
 {
     int system_type_id = string_hash(name);
     if(cache_map_get_hashed(&_ecs.systems, system_type_id) != NULL)
