@@ -3,7 +3,6 @@
 #include "scieppend/core/cache.h"
 #include "scieppend/core/cache_map.h"
 #include "scieppend/core/container_common.h"
-#include "scieppend/core/event.h"
 #include "scieppend/core/string.h"
 
 #include <assert.h>
@@ -21,6 +20,8 @@
 
 // Pre-computed hash of "__NullComponentType" string
 const int C_NULL_COMPONENT_TYPE = 2025596145;
+// Pre-computed hash of "__NullSystemType" string
+const int C_NULL_SYSTEM_TYPE = -764810385;
 
 // STRUCTS
 
@@ -429,13 +430,61 @@ int component_type_register(const struct string* name, int component_type_size_b
     return component_type_id;
 }
 
-void system_register(const struct string* name, system_update_fn update_func, struct Array* required_components)
+void component_type_created_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func)
+{
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    if(comp_cache == NULL)
+    {
+        // TODO log error
+        return;
+    }
+
+    event_register_observer(&comp_cache->component_added_event, observer_data, callback_func);
+}
+
+void component_type_added_deregister_observer(const int component_type_id, void* observer_data, compare_fn comp_func)
+{
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    if(comp_cache == NULL)
+    {
+        // TODO log error
+        return;
+    }
+
+    event_deregister_observer(&comp_cache->component_added_event, observer_data, comp_func);
+}
+
+void component_type_removed_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func)
+{
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    if(comp_cache == NULL)
+    {
+        // TODO log error
+        return;
+    }
+
+    event_register_observer(&comp_cache->component_removed_event, observer_data, callback_func);
+}
+
+void component_type_removed_deregister_observer(const int component_type_id, void* observer_data, compare_fn comp_func)
+{
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    if(comp_cache == NULL)
+    {
+        // TODO log error
+        return;
+    }
+
+    event_deregister_observer(&comp_cache->component_removed_event, observer_data, comp_func);
+}
+
+int system_register(const struct string* name, system_update_fn update_func, struct Array* required_components)
 {
     int system_type_id = string_hash(name);
     if(cache_map_get_hashed(&_ecs.systems, system_type_id) != NULL)
     {
         // TODO: Log error
-        return;
+        return C_NULL_SYSTEM_TYPE;
     }
 
     struct _SystemNewArgs args;
@@ -444,6 +493,8 @@ void system_register(const struct string* name, system_update_fn update_func, st
     args.required_components = required_components;
 
     cache_map_emplace(&_ecs.systems, name->buffer, name->size, &args);
+
+    return system_type_id;
 }
 
 void systems_update(void)
