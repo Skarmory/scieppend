@@ -107,7 +107,7 @@ void _setup_send(void* userstate)
 void _teardown_send(void* userstate)
 {
     struct EventTestState* state = userstate;
-    for(int i = array_count(&state->observers); i > -1; --i)
+    for(int i = array_count(&state->observers) - 1; i > -1; --i)
     {
         event_deregister_observer(&state->event, array_get(&state->observers, i), &_observer_compare);
     }
