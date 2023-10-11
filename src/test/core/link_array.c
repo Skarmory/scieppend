@@ -107,7 +107,14 @@ static void _setup_linkarray_with_ptr_elements(void* userdata)
 
 static void _teardown_linkarray_with_ptr_elements(void* userdata)
 {
-    struct LinkArrayTestState* state= userdata;
+    struct LinkArrayTestState* state = userdata;
+
+    while(linkarray_count(&state->array) > 0)
+    {
+        struct LinkArrayTestItem** item = linkarray_front_voidp(&state->array);
+        linkarray_pop_front(&state->array);
+        free(*item);
+    }
 
     _teardown_linkarray_ptr_elements(&state->array);
 }
