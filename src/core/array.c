@@ -63,6 +63,30 @@ void array_uninit(struct Array* array)
     free(array->data);
 }
 
+void array_copy(struct Array* restrict dst, struct Array* restrict src)
+{
+    array_init(dst, src->item_size, src->count, src->alloc_func, src->free_func);
+    memcpy(dst->data, src->data, src->item_size * src->count);
+    dst->count = src->count;
+}
+
+void array_move(struct Array* restrict dst, struct Array* restrict src)
+{
+    dst->data = src->data;
+    dst->count = src->count;
+    dst->capacity = src->capacity;
+    dst->item_size = src->item_size;
+    dst->alloc_func = src->alloc_func;
+    dst->free_func = src->free_func;
+
+    src->data = NULL;
+    src->count = -1;
+    src->capacity = -1;
+    src->item_size = -1;
+    src->alloc_func = NULL;
+    src->free_func = NULL;
+}
+
 int array_count(const struct Array* array)
 {
     return array->count;

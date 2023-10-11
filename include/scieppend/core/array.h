@@ -22,6 +22,8 @@ struct Array* array_new(int item_size, int capacity, alloc_fn alloc_func, free_f
 void          array_init(struct Array* array, int item_size, int capacity, alloc_fn alloc_func, free_fn free_func);
 void          array_free(struct Array* array);
 void          array_uninit(struct Array* array);
+void          array_copy(struct Array* dst, struct Array* src);
+void          array_move(struct Array* dst, struct Array* src);
 int           array_count(const struct Array* array);
 int           array_capacity(struct Array* array);
 void          array_add(struct Array* array, void* item);
