@@ -430,7 +430,7 @@ int component_type_register(const struct string* name, int component_type_size_b
     return component_type_id;
 }
 
-void component_type_created_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func)
+void component_type_added_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func)
 {
     struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
     if(comp_cache == NULL)
