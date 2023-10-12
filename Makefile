@@ -16,7 +16,7 @@ TEST_DEPS=$(TEST_SRCS:.c=.d)
 
 default: release
 
-debug: CFLAGS=-g -DDEBUG
+debug: CFLAGS+=-g -DDEBUG
 debug: $(NAME)
 
 release: CFLAGS+=-Ofast
