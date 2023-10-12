@@ -145,6 +145,11 @@ static void _thread_end_task(struct _Thread* thread)
 
     --thread->tasker->executing_task_count;
 
+    mtx_lock(&thread->tasker->complete_list_lock);
+    list_add(&thread->tasker->complete_list, thread->task);
+    mtx_unlock(&thread->tasker->complete_list_lock);
+
+    thread->task = NULL;
     thread->state = THREAD_STATE_IDLE;
 }
 
