@@ -49,16 +49,13 @@ struct Tasker
 {
     atomic_int     pending_task_count;
     atomic_int     executing_task_count;
-    atomic_int     completed_task_count;
     atomic_bool    kill;
 
     struct _Thread worker_threads[C_MAX_THREADS];
     mtx_t          pending_list_lock;
-    mtx_t          complete_list_lock;
     cnd_t          work_signal;
 
     struct List    pending_list;
-    struct List    complete_list;
 };
 
 struct Task
@@ -145,11 +142,6 @@ static void _thread_end_task(struct _Thread* thread)
 
     --thread->tasker->executing_task_count;
 
-    mtx_lock(&thread->tasker->complete_list_lock);
-    list_add(&thread->tasker->complete_list, thread->task);
-    mtx_unlock(&thread->tasker->complete_list_lock);
-
-    ++thread->tasker->completed_task_count;
     thread->task = NULL;
     thread->state = THREAD_STATE_IDLE;
 }
@@ -218,13 +210,10 @@ struct Tasker* tasker_new(void)
     struct Tasker* tasker = malloc(sizeof(struct Tasker));
     tasker->pending_task_count = 0;
     tasker->executing_task_count = 0;
-    tasker->completed_task_count = 0;
     tasker->kill = false;
     list_init(&tasker->pending_list);
-    list_init(&tasker->complete_list);
 
     mtx_init(&tasker->pending_list_lock, mtx_plain);
-    mtx_init(&tasker->complete_list_lock, mtx_plain);
     cnd_init(&tasker->work_signal);
 
     for(int i = 0; i < C_MAX_THREADS; ++i)
@@ -246,11 +235,9 @@ void tasker_free(struct Tasker* tasker)
     }
 
     mtx_destroy(&tasker->pending_list_lock);
-    mtx_destroy(&tasker->complete_list_lock);
     cnd_destroy(&tasker->work_signal);
 
     list_free_data(&tasker->pending_list, &task_free_wrapper);
-    list_free_data(&tasker->complete_list, &task_free_wrapper);
 
     free(tasker);
 }
@@ -294,18 +281,12 @@ bool tasker_has_executing_tasks(struct Tasker* tasker)
     return tasker->executing_task_count != 0;
 }
 
-bool tasker_has_completed_tasks(struct Tasker* tasker)
-{
-    return tasker->completed_task_count != 0;
-}
-
 void tasker_log_state(struct Tasker* tasker)
 {
     log_msg(LOG_DEBUG, "Tasker state:");
     log_push_indent(LOG_ID_DEBUG);
     log_format_msg(LOG_DEBUG, "Pending tasks: %d", tasker->pending_task_count);
     log_format_msg(LOG_DEBUG, "Executing tasks: %d", tasker->executing_task_count);
-    log_format_msg(LOG_DEBUG, "Completed tasks: %d", tasker->completed_task_count);
 
     log_msg(LOG_DEBUG, "Threads:");
     log_push_indent(LOG_ID_DEBUG);

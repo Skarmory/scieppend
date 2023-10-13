@@ -47,10 +47,6 @@ bool tasker_has_pending_tasks(struct Tasker* tasker);
  */
 bool tasker_has_executing_tasks(struct Tasker* tasker);
 
-/* Return true if tasker has any tasks that it has completed and awaiting integration.
- */
-bool tasker_has_completed_tasks(struct Tasker* tasker);
-
 /* Log tasker state for debugging purposes.
  */
 void tasker_log_state(struct Tasker* tasker);
