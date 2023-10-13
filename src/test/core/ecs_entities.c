@@ -6,6 +6,8 @@
 #include "scieppend/test/core/ecs_common.h"
 #include "scieppend/test/test.h"
 
+#include <stdio.h>
+
 struct EntityTestState
 {
     struct Array  entity_handles;

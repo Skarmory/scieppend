@@ -24,7 +24,7 @@
             fprintf(stderr, "Stack array out of memory");\
             abort();\
         }\
-        memcpy(&((array)->data[(array)->count]), (item), sizeof (array)->data[0]);\
+        (array)->data[ (array)->count ] = item;\
         ++((array)->count);\
     } while(0)
 
@@ -33,15 +33,23 @@
     {\
         memcpy(&((array)->data[(index)]), &((array)->data[(array)->count-1]), sizeof (array)->data[0]);\
         memset(&((array)->data[(array)->count-1]), '\0', sizeof (array)->data[0]);\
+        --((array)->count);\
     } while(0)
 
 #define stackarray_get(array, index)\
-    (&((array)->data[index]))
+    ((array)->data[index])
 
 #define stackarray_set(array, index, item)\
     do\
     {\
-        (array)->data[(index)] = *item;\
+        (array)->data[(index)] = item;\
+    } while(0)
+
+#define stackarray_clear(array)\
+    do\
+    {\
+        memset((array)->data, '\0', sizeof (array)->data);\
+        (array)->count = 0;\
     } while(0)
 
 #endif
