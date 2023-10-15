@@ -152,6 +152,39 @@ int array_find(const struct Array* array, const void* item, compare_fn comp_func
     return -1;
 }
 
+int array_find_sorted(const struct Array* array, const void* item, compare_fn comp_func)
+{
+    if(array->count == 0)
+    {
+        return -1;
+    }
+
+    int high = array->count - 1;
+    int low  = 0;
+    int pivot = -1;
+
+    while(low <= high)
+    {
+        pivot = (high + low) / 2;
+
+        int res = comp_func(item, array_get(array, pivot));
+        if(res == 0)
+        {
+            return pivot;
+        }
+        else if( res < 0 )
+        {
+            high = pivot - 1;
+        }
+        else
+        {
+            low = pivot + 1;
+        }
+    }
+
+    return -1;
+}
+
 void array_sort(struct Array* array, compare_fn comp_func)
 {
     qsort(array->data, array->count, array->item_size, comp_func);
