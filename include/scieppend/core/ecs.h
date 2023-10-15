@@ -56,10 +56,10 @@ int entity_component_count(EntityHandle id);
 /* Creates a component cache for a particular component type.
  */
 int component_type_register(const struct string* name, int component_type_size_bytes);
-void component_type_added_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func);
-void component_type_added_deregister_observer(const int component_type_id, void* observer_data, compare_fn comp_func);
-void component_type_removed_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func);
-void component_type_removed_deregister_observer(const int component_type_id, void* observer_data, compare_fn comp_func);
+void component_type_added_register_observer(const int component_type_id, ObserverHandle observer);
+void component_type_added_deregister_observer(const int component_type_id, ObserverHandle observer);
+void component_type_removed_register_observer(const int component_type_id, ObserverHandle observer);
+void component_type_removed_deregister_observer(const int component_type_id, ObserverHandle observer);
 
 /* Internally creates a system that will call the given function every update cycle.
  */

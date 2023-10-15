@@ -1,5 +1,6 @@
 #include "scieppend/test/core/event.h"
 
+#include "scieppend/core/array.h"
 #include "scieppend/core/container_common.h"
 #include "scieppend/core/event.h"
 #include "scieppend/test/test.h"
@@ -10,6 +11,7 @@ struct EventTestState
 {
     struct Event event;
     struct Array observers;
+    struct Array observer_datas;
 };
 
 struct ObserverTestData
@@ -17,6 +19,13 @@ struct ObserverTestData
     int x;
     int y;
 };
+
+static int _observer_compare(const void* lhs, const void* rhs)
+{
+    const struct ObserverTestData* _lhs = lhs;
+    const struct ObserverTestData* _rhs = rhs;
+    return _lhs->x == _rhs->x && _lhs->y == _rhs->y;
+}
 
 static void _observer_callback([[maybe_unused]] struct Event* sender, void* data, [[maybe_unused]] void* event_args)
 {
@@ -28,16 +37,10 @@ static void _observer_callback([[maybe_unused]] struct Event* sender, void* data
     ++(*event_arg);
 }
 
-static int _observer_compare(const void* lhs, const void* rhs)
-{
-    const struct ObserverTestData* lhs_obs = lhs;
-    const struct ObserverTestData* rhs_obs = rhs;
-    return lhs_obs->x == rhs_obs->x && lhs_obs->y == rhs_obs->y;
-}
-
 static void _setup_event(void* userstate)
 {
     struct EventTestState* state = userstate;
+    eventing_init();
     event_init(&state->event);
 }
 
@@ -45,15 +48,17 @@ static void _teardown_event(void* userstate)
 {
     struct EventTestState* state = userstate;
     event_uninit(&state->event);
+    eventing_uninit();
 }
 
 static void _setup_observer(void* userstate)
 {
     struct EventTestState* state = userstate;
-    array_init(&state->observers, sizeof(struct ObserverTestData), 8, NULL, NULL);
+    array_init(&state->observer_datas, sizeof(struct ObserverTestData), 8, NULL, NULL);
+    array_init(&state->observers, sizeof(ObserverHandle), array_count(&state->observer_datas), NULL, NULL);
     for(int i = 0; i < 8; ++i)
     {
-        struct ObserverTestData* obs_data = array_emplace(&state->observers, NULL);
+        struct ObserverTestData* obs_data = array_emplace(&state->observer_datas, NULL);
         obs_data->x = i;
         obs_data->y = 8-i;
     }
@@ -63,6 +68,7 @@ static void _teardown_observer(void* userstate)
 {
     struct EventTestState* state = userstate;
     array_uninit(&state->observers);
+    array_uninit(&state->observer_datas);
 }
 
 static void _setup(void* userstate)
@@ -80,11 +86,14 @@ static void _teardown(void* userstate)
 static void _test_event_register_and_deregister_observer(void* userstate)
 {
     struct EventTestState* state = userstate;
-    test_assert_equal_int("event observer count", 0, array_count(&state->event.observers));
-    event_register_observer(&state->event, array_get(&state->observers, 0), &_observer_callback);
-    test_assert_equal_int("event observer count", 1, array_count(&state->event.observers));
-    event_deregister_observer(&state->event, array_get(&state->observers, 0), &_observer_compare);
-    test_assert_equal_int("event observer count", 0, array_count(&state->event.observers));
+
+    ObserverHandle obs = observer_create(NULL, NULL);
+    test_assert_equal_int("event observer count", 0, event_observer_count(&state->event));
+    event_register_observer(&state->event, obs);
+    test_assert_equal_int("event observer count", 1, event_observer_count(&state->event));
+    event_deregister_observer(&state->event, obs);
+    test_assert_equal_int("event observer count", 0, event_observer_count(&state->event));
+    observer_destroy(obs);
 }
 
 void test_event_register_deregister(void)
@@ -98,18 +107,22 @@ void _setup_send(void* userstate)
 {
     struct EventTestState* state = userstate;
     _setup(userstate);
-    for(int i = 0; i < array_count(&state->observers); ++i)
+    for(int i = 0; i < array_count(&state->observer_datas); ++i)
     {
-        event_register_observer(&state->event, array_get(&state->observers, i), &_observer_callback);
+        ObserverHandle observer = observer_create(array_get(&state->observer_datas, i), &_observer_callback);
+        array_add(&state->observers, &observer);
+        event_register_observer(&state->event, observer);
     }
 }
 
 void _teardown_send(void* userstate)
 {
     struct EventTestState* state = userstate;
-    for(int i = array_count(&state->observers) - 1; i > -1; --i)
+    for(int i = array_count(&state->observer_datas) - 1; i > -1; --i)
     {
-        event_deregister_observer(&state->event, array_get(&state->observers, i), &_observer_compare);
+        ObserverHandle* obs = array_get(&state->observers, i);
+        event_deregister_observer(&state->event, *obs);
+        observer_destroy(*obs);
     }
     _teardown(state);
 }
@@ -126,9 +139,9 @@ void _test_event_send(void* userstate)
         { 5, 3 }, { 6, 2 }, { 7, 1 }, { 8, 0 }
     };
 
-    for(int i = 0; i < array_count(&state->observers); ++i)
+    for(int i = 0; i < array_count(&state->observer_datas); ++i)
     {
-        test_assert_item_in_array("observer data", expect, sizeof(struct ObserverTestData), 8, array_get(&state->observers, i), &_observer_compare);
+        test_assert_item_in_array("observer data", expect, sizeof(struct ObserverTestData), 8, array_get(&state->observer_datas, i), &_observer_compare);
     }
 }
 

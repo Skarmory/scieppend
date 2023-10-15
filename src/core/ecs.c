@@ -50,6 +50,7 @@ struct _System
     system_update_fn update_func;
     struct Array     entities;
     struct Array     required_components;
+    ObserverHandle   observer;
 };
 
 struct _ComponentCacheNewArgs
@@ -66,6 +67,20 @@ struct _SystemNewArgs
     const struct string* name;
     system_update_fn     update_func;
     struct Array*  required_components;
+};
+
+enum _SystemEventType
+{
+    EVENT_COMPONENT_ADDED,
+    EVENT_COMPONENT_REMOVED,
+    EVENT_ENTITY_CREATED,
+    EVENT_ENTITY_DESTROYED
+};
+
+struct _SystemEventArgs
+{
+    enum _SystemEventType event_type;
+    EntityHandle          entity_handle;
 };
 
 static struct ECS
@@ -130,7 +145,11 @@ static void _entity_remove_component(EntityHandle entity_handle, struct _Entity*
 {
     cache_remove(&comp_cache->components, component->id);
     array_remove_at(&entity->components, component_idx);
-    event_send(&comp_cache->component_removed_event, &entity_handle);
+
+    struct _SystemEventArgs args;
+    args.event_type = EVENT_COMPONENT_REMOVED;
+    args.entity_handle = entity_handle;
+    event_send(&comp_cache->component_removed_event, &args);
 }
 
 static void* _entity_get_component(const struct _Entity* entity, int component_type_id)
@@ -174,31 +193,30 @@ static bool _system_check_entity_add(struct _System* system, EntityHandle handle
     return true;
 }
 
-static void _system_component_added_event_callback(struct Event* sender, void* system, void* handle)
+static void _system_event_callback([[maybe_unused]] struct Event* sender, void* observer_data, void* event_args)
 {
-    _system_check_entity_add((struct _System*)system, *(EntityHandle*)handle);
-}
+    struct _System* system = observer_data;
+    struct _SystemEventArgs* args = event_args;
 
-static void _system_component_removed_event_callback(struct Event* sender, void* system, void* handle)
-{
-    struct _System* _system = system;
-    EntityHandle _handle = *(EntityHandle*)handle;
-
-    int entity_idx = array_find(&_system->entities, &_handle, &_compare_entity_handle);
-    if(entity_idx == -1)
+    switch(args->event_type)
     {
-        return;
+        case EVENT_COMPONENT_ADDED:
+            _system_check_entity_add(system, args->entity_handle);
+            break;
+        case EVENT_COMPONENT_REMOVED:
+        case EVENT_ENTITY_DESTROYED:
+            {
+                int entity_idx = array_find(&system->entities, &args->entity_handle, &_compare_entity_handle);
+                if(entity_idx != -1)
+                {
+                    array_remove_at(&system->entities, entity_idx);
+                }
+            }
+            break;
+        case EVENT_ENTITY_CREATED:
+            // TODO handle
+            break;
     }
-
-    array_remove_at(&_system->entities, entity_idx);
-}
-
-static int _system_compare(const void* lhs, const void* rhs)
-{
-    const struct _System* lhs_sys = lhs;
-    const struct _System* rhs_sys = rhs;
-
-    return string_hash(&lhs_sys->name) == string_hash(&rhs_sys->name);
 }
 
 static void _system_alloc(void* new_system, void* new_system_args)
@@ -212,13 +230,15 @@ static void _system_alloc(void* new_system, void* new_system_args)
     array_init(&_new_system->entities, sizeof(EntityHandle), DEFAULT_SYSTEM_ENTITIES_MAX, NULL, NULL);
     array_copy(&_new_system->required_components, _args->required_components);
 
+    _new_system->observer = observer_create(_new_system, &_system_event_callback);
+
     // Go through required components and set up event callbacks
     for(int i = 0; i < array_count(&_new_system->required_components); ++i)
     {
         int* component_type_id = array_get(&_new_system->required_components, i);
         struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, *component_type_id);
-        event_register_observer(&comp_cache->component_added_event, _new_system, &_system_component_added_event_callback);
-        event_register_observer(&comp_cache->component_removed_event, _new_system, &_system_component_removed_event_callback);
+        event_register_observer(&comp_cache->component_added_event, _new_system->observer);
+        event_register_observer(&comp_cache->component_removed_event, _new_system->observer);
     }
 }
 
@@ -232,10 +252,11 @@ static void _system_free(void* system)
     {
         int component_type_id = *(int*)array_get(&_system->required_components, i);
         struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
-        event_deregister_observer(&comp_cache->component_added_event, _system, &_system_compare);
-        event_deregister_observer(&comp_cache->component_removed_event, _system, &_system_compare);
+        event_deregister_observer(&comp_cache->component_added_event, _system->observer);
+        event_deregister_observer(&comp_cache->component_removed_event, _system->observer);
     }
 
+    observer_destroy(_system->observer);
     array_uninit(&_system->required_components);
 }
 
@@ -304,7 +325,10 @@ void entity_destroy(EntityHandle id)
         return;
     }
 
-    event_send(&_ecs.entity_destroyed_event, &id);
+    struct _SystemEventArgs args;
+    args.event_type = EVENT_ENTITY_DESTROYED;
+    args.entity_handle = id;
+    event_send(&_ecs.entity_destroyed_event, &args);
 
     for(int i = 0; i < array_count(&entity->components); ++i)
     {
@@ -343,7 +367,12 @@ void* entity_add_component(EntityHandle entity_handle, const int component_type_
     new_component.id = cache_emplace(&component_cache->components, NULL);
 
     array_add(&entity->components, &new_component);
-    event_send(&component_cache->component_added_event, &entity_handle);
+
+    struct _SystemEventArgs args;
+    args.event_type = EVENT_COMPONENT_ADDED;
+    args.entity_handle = entity_handle;
+    event_send(&component_cache->component_added_event, &args);
+
     return cache_get(&component_cache->components, new_component.id);
 }
 
@@ -430,7 +459,7 @@ int component_type_register(const struct string* name, int component_type_size_b
     return component_type_id;
 }
 
-void component_type_added_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func)
+void component_type_added_register_observer(const int component_type_id, ObserverHandle observer)
 {
     struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
     if(comp_cache == NULL)
@@ -439,10 +468,10 @@ void component_type_added_register_observer(const int component_type_id, void* o
         return;
     }
 
-    event_register_observer(&comp_cache->component_added_event, observer_data, callback_func);
+    event_register_observer(&comp_cache->component_added_event, observer);
 }
 
-void component_type_added_deregister_observer(const int component_type_id, void* observer_data, compare_fn comp_func)
+void component_type_added_deregister_observer(const int component_type_id, ObserverHandle observer)
 {
     struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
     if(comp_cache == NULL)
@@ -451,10 +480,10 @@ void component_type_added_deregister_observer(const int component_type_id, void*
         return;
     }
 
-    event_deregister_observer(&comp_cache->component_added_event, observer_data, comp_func);
+    event_deregister_observer(&comp_cache->component_added_event, observer);
 }
 
-void component_type_removed_register_observer(const int component_type_id, void* observer_data, event_callback_fn callback_func)
+void component_type_removed_register_observer(const int component_type_id, ObserverHandle observer)
 {
     struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
     if(comp_cache == NULL)
@@ -463,10 +492,10 @@ void component_type_removed_register_observer(const int component_type_id, void*
         return;
     }
 
-    event_register_observer(&comp_cache->component_removed_event, observer_data, callback_func);
+    event_register_observer(&comp_cache->component_removed_event, observer);
 }
 
-void component_type_removed_deregister_observer(const int component_type_id, void* observer_data, compare_fn comp_func)
+void component_type_removed_deregister_observer(const int component_type_id, ObserverHandle observer)
 {
     struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
     if(comp_cache == NULL)
@@ -475,7 +504,7 @@ void component_type_removed_deregister_observer(const int component_type_id, voi
         return;
     }
 
-    event_deregister_observer(&comp_cache->component_removed_event, observer_data, comp_func);
+    event_deregister_observer(&comp_cache->component_removed_event, observer);
 }
 
 int system_register(const struct string* name, system_update_fn update_func, struct Array* required_components)

@@ -1,6 +1,7 @@
 #include "scieppend/test/core/ecs.h"
 
 #include "scieppend/core/ecs.h"
+#include "scieppend/core/event.h"
 #include "scieppend/core/string.h"
 #include "scieppend/test/core/ecs_common.h"
 #include "scieppend/test/test.h"
@@ -35,6 +36,7 @@ static void _setup(void* userstate)
     string_init(&state->component_B_name, C_TEST_COMPONENT_B_NAME);
     string_init(&state->component_C_name, C_TEST_COMPONENT_C_NAME);
     array_init(&state->required_components, sizeof(int), 3, NULL, NULL);
+    eventing_init();
     ecs_init();
 }
 
@@ -42,6 +44,7 @@ static void _teardown(void* userstate)
 {
     struct SystemTestState* state = userstate;
     ecs_uninit();
+    eventing_uninit();
     array_uninit(&state->required_components);
     string_uninit(&state->component_C_name);
     string_uninit(&state->component_B_name);
