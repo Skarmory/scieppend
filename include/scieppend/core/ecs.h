@@ -14,6 +14,27 @@ typedef void(*system_update_fn)(EntityHandle handle);
 extern const int C_NULL_COMPONENT_TYPE;
 extern const int C_NULL_SYSTEM_TYPE;
 
+enum ECSEventType
+{
+    EVENT_COMPONENT_ADDED,
+    EVENT_COMPONENT_REMOVED,
+    EVENT_ENTITY_CREATED,
+    EVENT_ENTITY_DESTROYED
+};
+
+struct ComponentEventArgs
+{
+    enum ECSEventType   event_type;
+    EntityHandle        entity_handle;
+    ComponentTypeHandle component_type;
+};
+
+struct EntityEventArgs
+{
+    enum ECSEventType   event_type;
+    EntityHandle        entity_handle;
+};
+
 /* Initialise the internal ECS containers.
  */
 void ecs_init(void);

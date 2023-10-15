@@ -66,24 +66,10 @@ struct _SystemNewArgs
 {
     const struct string* name;
     system_update_fn     update_func;
-    struct Array*  required_components;
+    struct Array*        required_components;
 };
 
-enum _SystemEventType
-{
-    EVENT_COMPONENT_ADDED,
-    EVENT_COMPONENT_REMOVED,
-    EVENT_ENTITY_CREATED,
-    EVENT_ENTITY_DESTROYED
-};
-
-struct _SystemEventArgs
-{
-    enum _SystemEventType event_type;
-    EntityHandle          entity_handle;
-};
-
-static struct ECS
+static struct _ECS
 {
     struct Cache    entities;
     struct CacheMap systems;
@@ -146,9 +132,10 @@ static void _entity_remove_component(EntityHandle entity_handle, struct _Entity*
     cache_remove(&comp_cache->components, component->id);
     array_remove_at(&entity->components, component_idx);
 
-    struct _SystemEventArgs args;
+    struct ComponentEventArgs args;
     args.event_type = EVENT_COMPONENT_REMOVED;
     args.entity_handle = entity_handle;
+    args.component_type = component->type_id;
     event_send(&comp_cache->component_removed_event, &args);
 }
 
@@ -196,16 +183,18 @@ static bool _system_check_entity_add(struct _System* system, EntityHandle handle
 static void _system_event_callback([[maybe_unused]] struct Event* sender, void* observer_data, void* event_args)
 {
     struct _System* system = observer_data;
-    struct _SystemEventArgs* args = event_args;
+    enum ECSEventType event_type = ((struct EntityEventArgs*)event_args)->event_type;
 
-    switch(args->event_type)
+    switch(event_type)
     {
         case EVENT_COMPONENT_ADDED:
+            struct ComponentEventArgs* args = event_args;
             _system_check_entity_add(system, args->entity_handle);
             break;
         case EVENT_COMPONENT_REMOVED:
         case EVENT_ENTITY_DESTROYED:
             {
+                struct EntityEventArgs* args = event_args;
                 int entity_idx = array_find(&system->entities, &args->entity_handle, &_compare_entity_handle);
                 if(entity_idx != -1)
                 {
@@ -325,7 +314,7 @@ void entity_destroy(EntityHandle id)
         return;
     }
 
-    struct _SystemEventArgs args;
+    struct EntityEventArgs args;
     args.event_type = EVENT_ENTITY_DESTROYED;
     args.entity_handle = id;
     event_send(&_ecs.entity_destroyed_event, &args);
@@ -368,9 +357,10 @@ void* entity_add_component(EntityHandle entity_handle, const int component_type_
 
     array_add(&entity->components, &new_component);
 
-    struct _SystemEventArgs args;
+    struct ComponentEventArgs args;
     args.event_type = EVENT_COMPONENT_ADDED;
     args.entity_handle = entity_handle;
+    args.component_type = new_component.type_id;
     event_send(&component_cache->component_added_event, &args);
 
     return cache_get(&component_cache->components, new_component.id);
