@@ -40,6 +40,36 @@ static void _teardown_cache([[maybe_unused]] void* userstate)
     cache_free(state->cache);
 }
 
+static void _test_cache_add__resize(void* userstate)
+{
+    struct CacheTestState* state = userstate;
+
+    test_assert_equal_int("cache count equal capacity", cache_size(state->cache), cache_capacity(state->cache));
+
+    struct TestItem t;
+    t.i = 0;
+    t.f = 32.0f * 7.0f;
+    cache_add(state->cache, &t);
+
+    test_assert_equal_int("cache new capacity", 64, cache_capacity(state->cache));
+
+    int i = 0;
+    for(struct CacheIt it = cache_begin(state->cache); !cache_it_eq(it, cache_end(state->cache)); it = cache_it_next(it))
+    {
+        struct TestItem* item = cache_it_get(it);
+        test_assert_equal_int("elem int value", 32 - i, item->i);
+        test_assert_equal_float("elem float value", (float)i * 7.0f, item->f);
+        ++i;
+    }
+}
+
+void test_cache_add(void)
+{
+    struct CacheTestState userstate;
+    testing_add_group("cache add");
+    testing_add_test("add with resize", &_setup_cache, &_teardown_cache, &_test_cache_add__resize, &userstate, sizeof(struct CacheTestState));
+}
+
 static void _test_cache_iterator__cache_no_gaps([[maybe_unused]] void* userstate)
 {
     struct CacheTestState* state = userstate;
@@ -103,7 +133,9 @@ void test_cache_iterator(void)
     testing_add_test("cache iterator, no valid elements, items removed", &_setup_cache, &_teardown_cache, &_test_cache_iterator__no_valid_items__items_removed, &userstate, sizeof(struct CacheTestState));
 }
 
+
 void test_cache_run_all(void)
 {
+    test_cache_add();
     test_cache_iterator();
 }

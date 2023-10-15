@@ -12,7 +12,7 @@ int main(int argc, char** argv)
     test_init(true);
 
     test_array_run_all();
-    test_stack_array_run_all();
+    test_stackarray_run_all();
     test_cache_run_all();
     test_linkarray_run_all();
     test_cache_map_run_all();

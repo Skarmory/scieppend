@@ -151,6 +151,23 @@ static bool _check_handle(struct Cache* cache, int handle)
     return true;
 }
 
+static void _check_resize(struct Cache* cache)
+{
+    if(cache->current_used == cache->capacity)
+    {
+        int new_capacity = (cache->capacity << 1);
+        cache->items = realloc(cache->items, cache->item_size * new_capacity);
+        cache->handles = realloc(cache->handles, sizeof(int) * new_capacity);
+
+        if(!cache->items || !cache->handles)
+        {
+            abort();
+        }
+
+        cache->capacity = new_capacity;
+    }
+}
+
 [[maybe_unused]] static void _debug_print_free_list([[maybe_unused]] struct Cache* cache)
 {
 #ifdef DEBUG_CORE_CACHE
@@ -197,14 +214,6 @@ static bool _check_handle(struct Cache* cache, int handle)
 #endif
 }
 
-static void _null_alloc([[maybe_unused]] void* item, [[maybe_unused]] void* args)
-{
-}
-
-static void _null_free([[maybe_unused]] void* item)
-{
-}
-
 // EXTERNAL FUNCS
 
 struct Cache* cache_new(int item_size, int capacity, alloc_fn alloc_func, free_fn free_func)
@@ -226,8 +235,8 @@ void cache_init(struct Cache* cache, int item_size, int capacity, alloc_fn alloc
     cache->item_size    = item_size;
     cache->capacity     = capacity;
     cache->free_head    = C_NULL_CACHE_HANDLE;
-    cache->alloc_func   = alloc_func ? alloc_func : &_null_alloc;
-    cache->free_func    = free_func ? free_func : &_null_free;
+    cache->alloc_func   = alloc_func;
+    cache->free_func    = free_func;
 
     for(int i = 0; i < cache->capacity; ++i)
     {
@@ -286,6 +295,8 @@ bool cache_stale_handle(struct Cache* cache, int handle)
 
 int cache_add(struct Cache* cache, const void* item)
 {
+    _check_resize(cache);
+
     int next_handle = _next_handle(cache);
 
     if(_check_valid(next_handle))
@@ -299,12 +310,17 @@ int cache_add(struct Cache* cache, const void* item)
 
 int cache_emplace(struct Cache* cache, void* args)
 {
+    _check_resize(cache);
+
     int next_handle = _next_handle(cache);
 
     if(_check_valid(next_handle))
     {
         void* new_item = _get_item(cache, next_handle);
-        cache->alloc_func(new_item, args);
+        if(cache->alloc_func)
+        {
+            cache->alloc_func(new_item, args);
+        }
         ++cache->current_used;
     }
 
@@ -320,7 +336,10 @@ void cache_remove(struct Cache* cache, int handle)
 
     int handle_idx = _get_idx(handle);
 
-    cache->free_func(_get_item(cache, handle));
+    if(cache->free_func)
+    {
+        cache->free_func(_get_item(cache, handle));
+    }
 
     if(!_free_list_empty(cache))
     {
