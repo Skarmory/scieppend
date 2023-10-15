@@ -11,7 +11,7 @@
 typedef void(*test_fn)(void* userstate);
 typedef void(*setup_fn)(void* userstate);
 typedef void(*teardown_fn)(void* userstate);
-typedef bool(*compare_fn)(const void* lhs, const void* rhs);
+typedef int(*compare_fn)(const void* lhs, const void* rhs);
 
 struct TestCase
 {

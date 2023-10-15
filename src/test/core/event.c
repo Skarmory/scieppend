@@ -28,7 +28,7 @@ static void _observer_callback([[maybe_unused]] struct Event* sender, void* data
     ++(*event_arg);
 }
 
-static bool _observer_compare(const void* lhs, const void* rhs)
+static int _observer_compare(const void* lhs, const void* rhs)
 {
     const struct ObserverTestData* lhs_obs = lhs;
     const struct ObserverTestData* rhs_obs = rhs;

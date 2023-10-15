@@ -151,3 +151,8 @@ int array_find(const struct Array* array, const void* item, compare_fn comp_func
 
     return -1;
 }
+
+void array_sort(struct Array* array, compare_fn comp_func)
+{
+    qsort(array->data, array->count, array->item_size, comp_func);
+}

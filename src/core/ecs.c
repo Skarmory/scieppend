@@ -80,7 +80,7 @@ static struct ECS
 
 // INTERNAL FUNCS
 
-static bool _compare_entity_handle(const void* lhs, const void* rhs)
+static int _compare_entity_handle(const void* lhs, const void* rhs)
 {
     EntityHandle _lhs = *(EntityHandle*)lhs;
     EntityHandle _rhs = *(EntityHandle*)rhs;
@@ -193,7 +193,7 @@ static void _system_component_removed_event_callback(struct Event* sender, void*
     array_remove_at(&_system->entities, entity_idx);
 }
 
-static bool _system_compare(const void* lhs, const void* rhs)
+static int _system_compare(const void* lhs, const void* rhs)
 {
     const struct _System* lhs_sys = lhs;
     const struct _System* rhs_sys = rhs;

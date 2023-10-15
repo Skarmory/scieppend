@@ -32,5 +32,6 @@ void          array_remove_at(struct Array* array, int index);
 void*         array_get(const struct Array* array, int index);
 void          array_shrink(struct Array* array);
 int           array_find(const struct Array*, const void* item, compare_fn comp_func);
+void          array_sort(struct Array* array, compare_fn comp_func);
 
 #endif

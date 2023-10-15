@@ -11,7 +11,7 @@ struct CacheMapTestItem
     float f;
 };
 
-static bool _compare_test_item(const void* lhs, const void* rhs)
+static int _compare_test_item(const void* lhs, const void* rhs)
 {
     const struct CacheMapTestItem* _lhs = lhs;
     const struct CacheMapTestItem* _rhs = rhs;
