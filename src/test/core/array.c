@@ -1,6 +1,7 @@
 #include "scieppend/test/core/array.h"
 
 #include "scieppend/core/array.h"
+#include "scieppend/core/comparator.h"
 #include "scieppend/test/test.h"
 #include <stddef.h>
 
@@ -10,22 +11,12 @@ struct ArrayTestItem
     float f;
 };
 
-static int _compare_int(const void* lhs, const void* rhs)
-{
-    const int* _lhs = lhs;
-    const int* _rhs = rhs;
-
-    if(*_lhs == *_rhs) return 0;
-    else if(*_lhs < *_rhs) return -1;
-    else return 1;
-}
-
 static int _compare_array_test_item(const void* lhs, const void* rhs)
 {
     const struct ArrayTestItem* _lhs = lhs;
     const struct ArrayTestItem* _rhs = rhs;
 
-    return _compare_int(&_lhs->i, &_rhs->i);
+    return compare_int(&_lhs->i, &_rhs->i);
 }
 
 static void _setup_array(void* userstate)
@@ -145,12 +136,12 @@ static void _test_array__find_sorted(void* userstate)
 
     for(int i = 0; i < 10; ++i)
     {
-        int found_idx = array_find_sorted(array, &expect_values[i], &_compare_int);
+        int found_idx = array_find_sorted(array, &expect_values[i], &compare_int);
         test_assert_equal_int("index", expect_indices[i], found_idx);
     }
 
     int invalid_item = 999;
-    int found_idx = array_find_sorted(array, &invalid_item, &_compare_int);
+    int found_idx = array_find_sorted(array, &invalid_item, &compare_int);
     test_assert_equal_int("find value not in array index", -1, found_idx);
 }
 
