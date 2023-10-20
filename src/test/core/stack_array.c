@@ -12,7 +12,8 @@ struct ArrayTestItem
 
 static void _test_stackarray_add([[maybe_unused]] void* userstate)
 {
-    StackArray(struct ArrayTestItem, 8, test_array);
+    StackArray(struct ArrayTestItem, 8) test_array;
+    stackarray_init(&test_array);
 
     for(int i = 0; i < 8; ++i)
     {
@@ -37,7 +38,8 @@ void test_stackarray_add(void)
 
 static void _test_stackarray_remove([[maybe_unused]] void* userstate)
 {
-    StackArray(int, 8, test_array);
+    StackArray(int, 8) test_array;
+    stackarray_init(&test_array);
 
     for(int i = 0; i < 8; ++i)
     {
@@ -63,7 +65,8 @@ void test_stackarray_remove(void)
 
 static void _test_stackarray_clear([[maybe_unused]] void* userstate)
 {
-    StackArray(int, 8, test_array);
+    StackArray(int, 8) test_array;
+    stackarray_init(&test_array);
 
     for(int i = 0; i < 8; ++i)
     {

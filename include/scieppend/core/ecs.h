@@ -14,6 +14,8 @@ typedef void(*system_update_fn)(EntityHandle handle);
 extern const int C_NULL_COMPONENT_TYPE;
 extern const int C_NULL_SYSTEM_TYPE;
 
+#define C_NULL_ENTITY_HANDLE C_NULL_CACHE_HANDLE
+
 enum ECSEventType
 {
     EVENT_COMPONENT_ADDED,
@@ -69,7 +71,7 @@ void entity_remove_component_by_name(EntityHandle id, const struct string* compo
 /* Get a component from an entity.
  * Return null if no component found.
  */
-void* entity_get_component(EntityHandle entity_id, int component_id);
+void* entity_get_component(EntityHandle entity_id, const int component_type_id);
 void* entity_get_component_by_name(EntityHandle entity_id, const struct string* component_name);
 
 int entity_component_count(EntityHandle id);

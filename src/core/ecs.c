@@ -297,7 +297,7 @@ EntityHandle entity_create(void)
 {
     EntityHandle handle = cache_emplace(&_ecs.entities, NULL);
 
-    if(handle == C_NULL_CACHE_HANDLE)
+    if(handle == C_NULL_ENTITY_HANDLE)
     {
         // TODO: Log error
     }

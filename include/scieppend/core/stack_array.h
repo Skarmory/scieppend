@@ -8,13 +8,15 @@
  * Basically a normal array, except with helpful "functions"
  */
 
-#define StackArray(typename, capacity, name)\
+#define StackArray(typename, capacity)\
     struct\
     {\
         typename data[(capacity)];\
         int count;\
-    } name;\
-    do { name.count = 0; } while(0)
+    }
+
+#define stackarray_init(array)\
+    do { (array)->count = 0; } while(0)
 
 #define stackarray_add(array, item)\
     do\
