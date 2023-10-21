@@ -154,13 +154,13 @@ static void* _entity_get_component(const struct _Entity* entity, int component_t
         return NULL;
     }
 
-    for(int i = 0; i < array_count(&entity->components); ++i)
+    for(int i = 0; i < array_ts_count(&entity->components); ++i)
     {
-        struct _Component* component = array_get(&entity->components, i);
+        struct _Component* component = array_ts_get(&entity->components, i);
 
         if(component->type_id == component_type_id)
         {
-            return cache_get(&comp_cache->components, component->id);
+            return cache_ts_get(&comp_cache->components, component->id);
         }
     }
 
@@ -170,7 +170,7 @@ static void* _entity_get_component(const struct _Entity* entity, int component_t
 static bool _system_check_entity_add(struct _System* system, EntityHandle handle)
 {
     // Check the entity has all the required components for this system
-    struct _Entity* entity = cache_get(&_ecs.entities, handle);
+    struct _Entity* entity = cache_ts_get(&_ecs.entities, handle);
     for(int i = 0; i < array_count(&system->required_components); ++i)
     {
         int required_component_type_id = *(int*)array_get(&system->required_components, i);
@@ -180,7 +180,7 @@ static bool _system_check_entity_add(struct _System* system, EntityHandle handle
         }
     }
 
-    array_add(&system->entities, &handle);
+    array_ts_add(&system->entities, &handle);
 
     return true;
 }
@@ -200,10 +200,10 @@ static void _system_event_callback([[maybe_unused]] struct Event* sender, void* 
         case EVENT_ENTITY_DESTROYED:
             {
                 struct EntityEventArgs* args = event_args;
-                int entity_idx = array_find(&system->entities, &args->entity_handle, &_compare_entity_handle);
+                int entity_idx = array_ts_find(&system->entities, &args->entity_handle, &_compare_entity_handle);
                 if(entity_idx != -1)
                 {
-                    array_remove_at(&system->entities, entity_idx);
+                    array_ts_remove_at(&system->entities, entity_idx);
                 }
             }
             break;
@@ -278,7 +278,7 @@ void ecs_uninit(void)
 
 int ecs_entities_count(void)
 {
-    return cache_size(&_ecs.entities);
+    return cache_ts_count(&_ecs.entities);
 }
 
 int ecs_component_types_count(void)
@@ -290,7 +290,7 @@ int ecs_components_count(const struct string* name)
 {
     int component_type_id = string_hash(name);
     struct _ComponentCache* comp_cache =  cache_map_get_hashed(&_ecs.component_caches, component_type_id);
-    return cache_size(&comp_cache->components);
+    return cache_ts_count(&comp_cache->components);
 }
 
 int ecs_systems_count(void)
@@ -312,7 +312,7 @@ EntityHandle entity_create(void)
 
 void entity_destroy(EntityHandle id)
 {
-    struct _Entity* entity = cache_get(&_ecs.entities, id);
+    struct _Entity* entity = cache_ts_get(&_ecs.entities, id);
 
     if(!entity)
     {
@@ -324,10 +324,10 @@ void entity_destroy(EntityHandle id)
     args.entity_handle = id;
     event_send(&_ecs.entity_destroyed_event, &args);
 
-    for(int i = 0; i < array_count(&entity->components); ++i)
+    for(int i = 0; i < array_ts_count(&entity->components); ++i)
     {
 
-        struct _Component* component = array_get(&entity->components, i);
+        struct _Component* component = array_ts_get(&entity->components, i);
         struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component->type_id);
         _entity_remove_component(id, entity, component_cache, component, i);
     }
@@ -337,7 +337,7 @@ void entity_destroy(EntityHandle id)
 
 void* entity_add_component(EntityHandle entity_handle, const int component_type_id)
 {
-    struct _Entity* entity = cache_get(&_ecs.entities, entity_handle);
+    struct _Entity* entity = cache_ts_get(&_ecs.entities, entity_handle);
     struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
 
     if(component_cache == NULL || entity == NULL)
@@ -347,9 +347,9 @@ void* entity_add_component(EntityHandle entity_handle, const int component_type_
     }
 
     // Cannot add a duplicate component type, must be unique
-    for(int i = 0; i < array_count(&entity->components); ++i)
+    for(int i = 0; i < array_ts_count(&entity->components); ++i)
     {
-        struct _Component* check_this = array_get(&entity->components, i);
+        struct _Component* check_this = array_ts_get(&entity->components, i);
         if(check_this->type_id == component_type_id)
         {
             return NULL;
@@ -368,7 +368,7 @@ void* entity_add_component(EntityHandle entity_handle, const int component_type_
     args.component_type = new_component.type_id;
     event_send(&component_cache->component_added_event, &args);
 
-    return cache_get(&component_cache->components, new_component.id);
+    return cache_ts_get(&component_cache->components, new_component.id);
 }
 
 void* entity_add_component_by_name(EntityHandle entity_handle, const struct string* component_name)
@@ -379,7 +379,7 @@ void* entity_add_component_by_name(EntityHandle entity_handle, const struct stri
 
 void entity_remove_component(EntityHandle entity_handle, const int component_type_id)
 {
-    struct _Entity* entity = cache_get(&_ecs.entities, entity_handle);
+    struct _Entity* entity = cache_ts_get(&_ecs.entities, entity_handle);
     struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
 
     if(entity == NULL || component_cache == NULL)
@@ -388,9 +388,9 @@ void entity_remove_component(EntityHandle entity_handle, const int component_typ
         return;
     }
 
-    for(int i = 0; i < array_count(&entity->components); ++i)
+    for(int i = 0; i < array_ts_count(&entity->components); ++i)
     {
-        struct _Component* check_this = array_get(&entity->components, i);
+        struct _Component* check_this = array_ts_get(&entity->components, i);
         if(check_this->type_id == component_type_id)
         {
             _entity_remove_component(entity_handle, entity, component_cache, check_this, i);
@@ -407,7 +407,7 @@ void entity_remove_component_by_name(EntityHandle entity_handle, const struct st
 
 void* entity_get_component(EntityHandle entity_id, int component_type_id)
 {
-    struct _Entity* entity = cache_get(&_ecs.entities, entity_id);
+    struct _Entity* entity = cache_ts_get(&_ecs.entities, entity_id);
     if(entity == NULL)
     {
         return NULL;
@@ -424,13 +424,13 @@ void* entity_get_component_by_name(EntityHandle entity_id, const struct string* 
 
 int entity_component_count(EntityHandle id)
 {
-    struct _Entity* entity = cache_get(&_ecs.entities, id);
+    struct _Entity* entity = cache_ts_get(&_ecs.entities, id);
     if(entity == NULL)
     {
         return -1;
     }
 
-    return array_count(&entity->components);
+    return array_ts_count(&entity->components);
 }
 
 int component_type_register(const struct string* name, int component_type_size_bytes)
@@ -529,9 +529,9 @@ void systems_update(void)
     {
         struct _System* sys = cache_map_it_get(&it);
 
-        for(int i = 0; i < array_count(&sys->entities); ++i)
+        for(int i = 0; i < array_ts_count(&sys->entities); ++i)
         {
-            sys->update_func(*(EntityHandle*)array_get(&sys->entities, i));
+            sys->update_func(*(EntityHandle*)array_ts_get(&sys->entities, i));
         }
     }
 }
@@ -547,5 +547,5 @@ int system_entity_count(const struct string* system_name)
         return -1;
     }
 
-    return array_count(&system->entities);
+    return array_ts_count(&system->entities);
 }
