@@ -1,11 +1,12 @@
 #ifndef SCIEPPEND_CORE_OBSERVER_H
 #define SCIEPPEND_CORE_OBSERVER_H
 
-#include "scieppend/core/array.h"
+#include "scieppend/core/array_threadsafe.h"
+
 
 struct Event
 {
-    struct Array observers;
+    struct Array_ThreadSafe observers;
 };
 
 typedef void(*event_callback_fn)(struct Event* sender, void* obs_data, void* event_args);
