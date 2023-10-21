@@ -22,6 +22,7 @@
 const int C_NULL_COMPONENT_TYPE = 2025596145;
 // Pre-computed hash of "__NullSystemType" string
 const int C_NULL_SYSTEM_TYPE = -764810385;
+const int C_NULL_ENTITY_HANDLE = 0xffffffff;
 
 // STRUCTS
 

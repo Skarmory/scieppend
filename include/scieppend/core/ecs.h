@@ -13,8 +13,7 @@ typedef void(*system_update_fn)(EntityHandle handle);
 
 extern const int C_NULL_COMPONENT_TYPE;
 extern const int C_NULL_SYSTEM_TYPE;
-
-#define C_NULL_ENTITY_HANDLE C_NULL_CACHE_HANDLE
+extern const int C_NULL_ENTITY_HANDLE;
 
 enum ECSEventType
 {
