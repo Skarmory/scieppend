@@ -1,6 +1,9 @@
 #include "scieppend/core/ecs.h"
 
+#include "scieppend/core/array.h"
+#include "scieppend/core/array_threadsafe.h"
 #include "scieppend/core/cache.h"
+#include "scieppend/core/cache_threadsafe.h"
 #include "scieppend/core/cache_map.h"
 #include "scieppend/core/container_common.h"
 #include "scieppend/core/string.h"
@@ -28,7 +31,7 @@ const int C_NULL_ENTITY_HANDLE = 0xffffffff;
 
 struct _Entity
 {
-    struct Array components;
+    struct Array_ThreadSafe components;
 };
 
 struct _Component
@@ -42,16 +45,16 @@ struct _ComponentCache
     ComponentTypeHandle component_type_id;
     struct Event component_added_event;
     struct Event component_removed_event;
-    struct Cache components;
+    struct Cache_ThreadSafe components;
 };
 
 struct _System
 {
-    struct string    name;
-    system_update_fn update_func;
-    struct Array     entities;
-    struct Array     required_components;
-    ObserverHandle   observer;
+    struct string           name;
+    system_update_fn        update_func;
+    struct Array_ThreadSafe entities;
+    struct Array            required_components;
+    ObserverHandle          observer;
 };
 
 struct _ComponentCacheNewArgs
@@ -72,9 +75,9 @@ struct _SystemNewArgs
 
 static struct _ECS
 {
-    struct Cache    entities;
-    struct CacheMap systems;
-    struct CacheMap component_caches;
+    struct Cache_ThreadSafe entities;
+    struct CacheMap         systems;
+    struct CacheMap         component_caches;
 
     struct Event entity_created_event;
     struct Event entity_destroyed_event;
@@ -99,7 +102,7 @@ static void _component_cache_alloc(void* new_comp_cache, void* new_cache_args)
     event_init(&_new_comp_cache->component_added_event);
     event_init(&_new_comp_cache->component_removed_event);
 
-    cache_init(
+    cache_ts_init(
         &_new_comp_cache->components,
         _new_cache_args->item_size,
         _new_cache_args->capacity,
@@ -111,27 +114,28 @@ static void _component_cache_alloc(void* new_comp_cache, void* new_cache_args)
 static void _component_cache_free(void* comp_cache)
 {
     struct _ComponentCache* _comp_cache = comp_cache;
+
     event_uninit(&_comp_cache->component_added_event);
     event_uninit(&_comp_cache->component_removed_event);
-    cache_uninit(&_comp_cache->components);
+    cache_ts_uninit(&_comp_cache->components);
 }
 
 static void _entity_alloc(void* new_entity, [[maybe_unused]] void* new_args)
 {
     struct _Entity* entity = new_entity;
-    array_init(&entity->components, sizeof(struct _Component), DEFAULT_ENTITY_COMPONENTS_MAX, NULL, NULL);
+    array_ts_init(&entity->components, sizeof(struct _Component), DEFAULT_ENTITY_COMPONENTS_MAX, NULL, NULL);
 }
 
 static void _entity_free(void* entity)
 {
     struct _Entity* _entity = entity;
-    array_uninit(&_entity->components);
+    array_ts_uninit(&_entity->components);
 }
 
 static void _entity_remove_component(EntityHandle entity_handle, struct _Entity* entity, struct _ComponentCache* comp_cache, struct _Component* component, int component_idx)
 {
-    cache_remove(&comp_cache->components, component->id);
-    array_remove_at(&entity->components, component_idx);
+    cache_ts_remove(&comp_cache->components, component->id);
+    array_ts_remove_at(&entity->components, component_idx);
 
     struct ComponentEventArgs args;
     args.event_type = EVENT_COMPONENT_REMOVED;
@@ -217,7 +221,7 @@ static void _system_alloc(void* new_system, void* new_system_args)
     string_init(&_new_system->name, _args->name->buffer);
     _new_system->update_func = _args->update_func;
 
-    array_init(&_new_system->entities, sizeof(EntityHandle), DEFAULT_SYSTEM_ENTITIES_MAX, NULL, NULL);
+    array_ts_init(&_new_system->entities, sizeof(EntityHandle), DEFAULT_SYSTEM_ENTITIES_MAX, NULL, NULL);
     array_copy(&_new_system->required_components, _args->required_components);
 
     _new_system->observer = observer_create(_new_system, &_system_event_callback);
@@ -236,7 +240,7 @@ static void _system_free(void* system)
 {
     struct _System* _system = system;
     string_uninit(&_system->name);
-    array_uninit(&_system->entities);
+    array_ts_uninit(&_system->entities);
 
     for(int i = 0; i < array_count(&_system->required_components); ++i)
     {
@@ -254,7 +258,7 @@ static void _system_free(void* system)
 
 void ecs_init(void)
 {
-    cache_init(&_ecs.entities, sizeof(struct _Entity), ENTITIES_MAX, &_entity_alloc, &_entity_free);
+    cache_ts_init(&_ecs.entities, sizeof(struct _Entity), ENTITIES_MAX, &_entity_alloc, &_entity_free);
     cache_map_init(&_ecs.systems, sizeof(struct _System), SYSTEMS_MAX, &_system_alloc, &_system_free);
     cache_map_init(&_ecs.component_caches, sizeof(struct _ComponentCache), COMPONENT_TYPES_MAX, &_component_cache_alloc, &_component_cache_free);
 
@@ -264,7 +268,7 @@ void ecs_init(void)
 
 void ecs_uninit(void)
 {
-    cache_uninit(&_ecs.entities);
+    cache_ts_uninit(&_ecs.entities);
     cache_map_uninit(&_ecs.systems);
     cache_map_uninit(&_ecs.component_caches);
 
@@ -296,7 +300,7 @@ int ecs_systems_count(void)
 
 EntityHandle entity_create(void)
 {
-    EntityHandle handle = cache_emplace(&_ecs.entities, NULL);
+    EntityHandle handle = cache_ts_emplace(&_ecs.entities, NULL);
 
     if(handle == C_NULL_ENTITY_HANDLE)
     {
@@ -328,7 +332,7 @@ void entity_destroy(EntityHandle id)
         _entity_remove_component(id, entity, component_cache, component, i);
     }
 
-    cache_remove(&_ecs.entities, id);
+    cache_ts_remove(&_ecs.entities, id);
 }
 
 void* entity_add_component(EntityHandle entity_handle, const int component_type_id)
@@ -354,9 +358,9 @@ void* entity_add_component(EntityHandle entity_handle, const int component_type_
 
     struct _Component new_component;
     new_component.type_id = component_type_id;
-    new_component.id = cache_emplace(&component_cache->components, NULL);
+    new_component.id = cache_ts_emplace(&component_cache->components, NULL);
 
-    array_add(&entity->components, &new_component);
+    array_ts_add(&entity->components, &new_component);
 
     struct ComponentEventArgs args;
     args.event_type = EVENT_COMPONENT_ADDED;

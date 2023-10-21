@@ -1,10 +1,10 @@
 #ifndef SCIEPPEND_CORE_ENTITY_H
 #define SCIEPPEND_CORE_ENTITY_H
 
-#include "scieppend/core/array.h"
 #include "scieppend/core/event.h"
 
 struct string;
+struct Array;
 
 typedef int EntityHandle;
 typedef int ComponentHandle;
