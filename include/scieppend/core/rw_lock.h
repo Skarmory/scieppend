@@ -13,13 +13,14 @@ struct RWLock
     int writers;
     int readers_waiting;
     int writers_waiting;
+    bool kill;
 };
 
 void rwlock_init(struct RWLock* lock);
 void rwlock_uninit(struct RWLock* lock);
-void rwlock_read_lock(struct RWLock* lock);
+bool rwlock_read_lock(struct RWLock* lock);
 void rwlock_read_unlock(struct RWLock* lock);
-void rwlock_write_lock(struct RWLock* lock);
+bool rwlock_write_lock(struct RWLock* lock);
 void rwlock_write_unlock(struct RWLock* lock);
 
 #endif
