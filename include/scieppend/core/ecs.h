@@ -59,8 +59,8 @@ void entity_destroy(EntityHandle id);
 
 /* Adds a new component of the given type to the entity of given id.
  */
-void* entity_add_component(EntityHandle id, const int component_type_id);
-void* entity_add_component_by_name(EntityHandle id, const struct string* component_name);
+void entity_add_component(EntityHandle id, const int component_type_id);
+void entity_add_component_by_name(EntityHandle id, const struct string* component_name);
 
 /* Removes the given component type from an entity.
  */
@@ -71,7 +71,10 @@ void entity_remove_component_by_name(EntityHandle id, const struct string* compo
  * Return null if no component found.
  */
 void* entity_get_component(EntityHandle entity_id, const int component_type_id);
+const void* entity_get_readonly_component(EntityHandle entity_id, const int component_type_id);
 void* entity_get_component_by_name(EntityHandle entity_id, const struct string* component_name);
+void entity_unget_component(EntityHandle entity_id, const int component_type_id);
+void entity_unget_readonly_component(EntityHandle entity_id, const int component_type_id);
 
 int entity_component_count(EntityHandle id);
 

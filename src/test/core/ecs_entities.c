@@ -102,12 +102,14 @@ static bool _add_component_and_test(EntityHandle handle, const struct string* co
     snprintf(case_name, 32, "%s count", component_name->buffer);
 
     int component_count = entity_component_count(handle);
+    int component_id = string_hash(component_name);
 
-    entity_add_component_by_name(handle, component_name);
-    void* component = entity_get_component_by_name(handle, component_name);
+    entity_add_component(handle, component_id);
+    const void* component = entity_get_readonly_component(handle, component_id);
     success |= test_assert_not_null("entity has component", component);
     success |= test_assert_equal_int(case_name, 1, ecs_components_count(component_name));
     success |= test_assert_equal_int("entity components count", component_count + 1, entity_component_count(handle));
+    entity_unget_readonly_component(handle, component_id);
 
     return success;
 }
@@ -119,9 +121,10 @@ static bool _remove_component_and_test(EntityHandle handle, const struct string*
     snprintf(case_name, 32, "%s count", component_name->buffer);
 
     int component_count = entity_component_count(handle);
+    int component_id = string_hash(component_name);
 
-    entity_remove_component_by_name(handle, component_name);
-    void* component = entity_get_component_by_name(handle, component_name);
+    entity_remove_component(handle, component_id);
+    const void* component = entity_get_readonly_component(handle, component_id);
     success |= test_assert_null("entity does not have component", component);
     success |= test_assert_equal_int(case_name, 0, ecs_components_count(component_name));
     success |= test_assert_equal_int("entity components count", component_count - 1, entity_component_count(handle));
@@ -133,9 +136,13 @@ static bool _get_component_and_test(EntityHandle handle, const struct string* co
 {
     char case_name[64];
     snprintf(case_name, 64, "entity has component %s", component_name->buffer);
+    int component_id = string_hash(component_name);
 
-    void* component = entity_get_component_by_name(handle, component_name);
-    return test_assert_not_null(case_name, component);
+    const void* component = entity_get_readonly_component(handle, component_id);
+    bool success = test_assert_not_null(case_name, component);
+    entity_unget_readonly_component(handle, component_id);
+
+    return success;
 }
 
 static void _test__entity_destroy_invalid_handle(void* userstate)
@@ -167,30 +174,38 @@ static void _test__entity_add_remove_component(void* userstate)
 
     EntityHandle handle = *(EntityHandle*)array_get(&state->entity_handles, 0);
 
-    _add_component_and_test(handle, &state->component_type_A_name);
+    {
+        _add_component_and_test(handle, &state->component_type_A_name);
+        struct ECSTestComponentA* component = entity_get_component(handle, string_hash(&state->component_type_A_name));
+        component->x = 7;
+        component->y = 1234;
+        component->z = 9876;
+        entity_unget_component(handle, string_hash(&state->component_type_A_name));
+    }
 
-    struct ECSTestComponentA* component = entity_get_component_by_name(handle, &state->component_type_A_name);
-    component->x = 7;
-    component->y = 1234;
-    component->z = 9876;
+    {
+        const struct ECSTestComponentA* component = entity_get_readonly_component(handle, string_hash(&state->component_type_A_name));
+        test_component_A_values(component, 7, 1234, 9876);
+        entity_unget_readonly_component(handle, string_hash(&state->component_type_A_name));
+        _remove_component_and_test(handle, &state->component_type_A_name);
+    }
 
-    component = NULL;
-    component = entity_get_component_by_name(handle, &state->component_type_A_name);
-    test_component_A_values(component, 7, 1234, 9876);
-    _remove_component_and_test(handle, &state->component_type_A_name);
 
-    component = NULL;
+    {
+        _add_component_and_test(handle, &state->component_type_A_name);
+        struct ECSTestComponentA* component = entity_get_component(handle, string_hash(&state->component_type_A_name));
+        component->x = 1357;
+        component->y = 2468;
+        component->z = 3579;
+        entity_unget_component(handle, string_hash(&state->component_type_A_name));
+    }
 
-    _add_component_and_test(handle, &state->component_type_A_name);
-    component = entity_get_component_by_name(handle, &state->component_type_A_name);
-    component->x = 1357;
-    component->y = 2468;
-    component->z = 3579;
-
-    component = NULL;
-    component = entity_get_component_by_name(handle, &state->component_type_A_name);
-    test_component_A_values(component, 1357, 2468, 3579);
-    _remove_component_and_test(handle, &state->component_type_A_name);
+    {
+        const struct ECSTestComponentA* component = entity_get_readonly_component(handle, string_hash(&state->component_type_A_name));
+        test_component_A_values(component, 1357, 2468, 3579);
+        entity_unget_readonly_component(handle, string_hash(&state->component_type_A_name));
+        _remove_component_and_test(handle, &state->component_type_A_name);
+    }
 }
 
 static void _test__entity_add_remove_component_with_resize(void* userstate)

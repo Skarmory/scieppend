@@ -26,6 +26,10 @@ static void _system_update(EntityHandle entity_handle)
     comp_a->x++;
     comp_a->y++;
     comp_a->z++;
+
+    entity_unget_component(entity_handle, G_TEST_COMPONENT_C_ID);
+    entity_unget_component(entity_handle, G_TEST_COMPONENT_B_ID);
+    entity_unget_component(entity_handle, G_TEST_COMPONENT_A_ID);
 }
 
 static void _setup(void* userstate)
@@ -167,15 +171,18 @@ void _test__system_update(void* userstate)
     EntityHandle handle = entity_create();
 
     int component_type_id = *(int*)array_get(&state->required_components, 0);
-    struct ECSTestComponentA* comp_a = entity_add_component(handle, component_type_id);
-    component_type_id = *(int*)array_get(&state->required_components, 1);
-    struct ECSTestComponentB* comp_b = entity_add_component(handle, component_type_id);
-    component_type_id = *(int*)array_get(&state->required_components, 2);
-    struct ECSTestComponentC* comp_c = entity_add_component(handle, component_type_id);
-
+    entity_add_component(handle, component_type_id);
+    struct ECSTestComponentA* comp_a = entity_get_component(handle, component_type_id);
     comp_a->x = 2;
     comp_a->y = 7;
     comp_a->z = 10;
+    entity_unget_component(handle, component_type_id);
+
+    component_type_id = *(int*)array_get(&state->required_components, 1);
+    entity_add_component(handle, component_type_id);
+
+    component_type_id = *(int*)array_get(&state->required_components, 2);
+    entity_add_component(handle, component_type_id);
 
     systems_update();
 
