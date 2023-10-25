@@ -29,5 +29,8 @@ int   array_ts_find(const struct Array_ThreadSafe*, const void* item, compare_fn
 int   array_ts_find_sorted(const struct Array_ThreadSafe*, const void* item, compare_fn comp_func);
 void  array_ts_sort(struct Array_ThreadSafe* array, compare_fn comp_func);
 
+void* array_ts_find_and_get(struct Array_ThreadSafe* array, const void* item, compare_fn comp_func);
+void  array_ts_find_and_remove(struct Array_ThreadSafe* array, const void* item, compare_fn compare_func);
+
 #endif
 

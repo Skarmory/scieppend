@@ -129,3 +129,33 @@ void array_ts_sort(struct Array_ThreadSafe* array, compare_fn comp_func)
     array_sort(&array->array, comp_func);
     rwlock_write_unlock(&array->lock);
 }
+
+void* array_ts_find_and_get(struct Array_ThreadSafe* array, const void* item, compare_fn comp_func)
+{
+    void* ret = NULL;
+
+    rwlock_read_lock(&array->lock);
+    {
+        int idx = array_find(&array->array, item, comp_func);
+        if(idx != -1)
+        {
+            ret = array_get(&array->array, idx);
+        }
+    }
+    rwlock_read_unlock(&array->lock);
+
+    return ret;
+}
+
+void array_ts_find_and_remove(struct Array_ThreadSafe* array, const void* item, compare_fn compare_func)
+{
+    rwlock_write_lock(&array->lock);
+    {
+        int idx = array_find(&array->array, item, compare_func);
+        if(idx != -1)
+        {
+            array_remove_at(&array->array, idx);
+        }
+    }
+    rwlock_write_unlock(&array->lock);
+}
