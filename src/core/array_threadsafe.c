@@ -56,10 +56,13 @@ void array_ts_move(struct Array_ThreadSafe* restrict dst, struct Array_ThreadSaf
 
 int array_ts_count(const struct Array_ThreadSafe* array)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     rwlock_read_lock(&array->lock);
     int ret = array_count(&array->array);
     rwlock_read_unlock(&array->lock);
     return ret;
+#pragma GCC diagnostic pop
 }
 
 int array_ts_capacity(struct Array_ThreadSafe* array)
@@ -94,10 +97,13 @@ void array_ts_remove_at(struct Array_ThreadSafe* array, int index)
 
 void* array_ts_get(const struct Array_ThreadSafe* array, int index)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     rwlock_read_lock(&array->lock);
     void* ret = array_get(&array->array, index);
     rwlock_read_unlock(&array->lock);
     return ret;
+#pragma GCC diagnostic pop
 }
 
 void array_ts_shrink(struct Array_ThreadSafe* array)
@@ -109,18 +115,24 @@ void array_ts_shrink(struct Array_ThreadSafe* array)
 
 int array_ts_find(const struct Array_ThreadSafe* array, const void* item, compare_fn comp_func)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     rwlock_read_lock(&array->lock);
     int ret = array_find(&array->array, item, comp_func);
     rwlock_read_unlock(&array->lock);
     return ret;
+#pragma GCC diagnostic pop
 }
 
 int array_ts_find_sorted(const struct Array_ThreadSafe* array, const void* item, compare_fn comp_func)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     rwlock_read_lock(&array->lock);
     int ret = array_find_sorted(&array->array, item, comp_func);
     rwlock_read_unlock(&array->lock);
     return ret;
+#pragma GCC diagnostic pop
 }
 
 void array_ts_sort(struct Array_ThreadSafe* array, compare_fn comp_func)
