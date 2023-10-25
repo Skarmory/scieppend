@@ -47,8 +47,8 @@ bool test_assert_equal_char_buffer(const char* case_name, const char* expect, co
 bool test_assert_equal_int(const char* case_name, const int expect, const int actual);
 bool test_assert_equal_bool(const char* case_name, const bool expect, const bool actual);
 bool test_assert_equal_float(const char* case_name, const float expect, const float actual);
-bool test_assert_not_null(const char* case_name, void* value);
-bool test_assert_null(const char* case_name, void* value);
+bool test_assert_not_null(const char* case_name, const void* value);
+bool test_assert_null(const char* case_name, const void* value);
 
 bool test_assert_nequal_int(const char* case_name, const int expect, const int actual);
 

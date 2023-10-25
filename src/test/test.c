@@ -164,7 +164,7 @@ bool test_assert_equal_float(const char* case_name, const float expect, const fl
     return success;
 }
 
-bool test_assert_not_null(const char* case_name, void* value)
+bool test_assert_not_null(const char* case_name, const void* value)
 {
     bool success = value != NULL;
     case_name = case_name ? case_name : "Test pointer not null";
@@ -174,7 +174,7 @@ bool test_assert_not_null(const char* case_name, void* value)
     return success;
 }
 
-bool test_assert_null(const char* case_name, void* value)
+bool test_assert_null(const char* case_name, const void* value)
 {
     bool success = value == NULL;
     case_name = case_name ? case_name : "Test pointer is null";
