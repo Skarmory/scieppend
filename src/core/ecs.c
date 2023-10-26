@@ -26,6 +26,7 @@ const int C_NULL_COMPONENT_TYPE = 2025596145;
 // Pre-computed hash of "__NullSystemType" string
 const int C_NULL_SYSTEM_TYPE = -764810385;
 const int C_NULL_ENTITY_HANDLE = 0xffffffff;
+const int C_NULL_COMPONENT_HANDLE = 0xffffffff;
 
 // -------------------- STRUCTS --------------------
 
@@ -51,7 +52,7 @@ struct _System
 
 struct _ComponentCache
 {
-    ComponentTypeHandle     component_type_id;
+    ComponentTypeHandle     component_type_handle;
     struct Cache_ThreadSafe components;        // Cache_ThreadSafe<T>
     struct Cache            component_locks;   // Cache<RWLock>
 
@@ -61,7 +62,7 @@ struct _ComponentCache
 
 struct _ComponentCacheNewArgs
 {
-    int component_type_id;
+    int component_type_handle;
     int item_size;
     int capacity;
     alloc_fn alloc_func;
@@ -122,7 +123,7 @@ static void _component_cache_alloc(void* new_comp_cache, void* new_cache_args)
     struct _ComponentCache* _new_comp_cache = new_comp_cache;
     struct _ComponentCacheNewArgs* _new_cache_args = new_cache_args;
 
-    _new_comp_cache->component_type_id = _new_cache_args->component_type_id;
+    _new_comp_cache->component_type_handle = _new_cache_args->component_type_handle;
 
     event_init(&_new_comp_cache->component_added_event);
     event_init(&_new_comp_cache->component_removed_event);
@@ -160,9 +161,9 @@ static void _entity_free(void* entity)
     array_ts_uninit(&_entity->components);
 }
 
-static void* _entity_get_component(struct _Entity* entity, int component_type_id, bool write)
+static void* _entity_get_component(struct _Entity* entity, int component_type_handle, bool write)
 {
-    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
 
     if(!comp_cache)
     {
@@ -174,7 +175,7 @@ static void* _entity_get_component(struct _Entity* entity, int component_type_id
     int found_idx = -1;
     rwlock_read_lock(&entity->components.lock);
     {
-        found_idx = array_find(&entity->components.array, &component_type_id, &_compare_component_lookup_by_type);
+        found_idx = array_find(&entity->components.array, &component_type_handle, &_compare_component_lookup_by_type);
         if(found_idx != -1)
         {
             component_lu = *(struct _ComponentLookup*)array_get(&entity->components.array, found_idx);
@@ -259,9 +260,9 @@ static bool _system_check_entity_add(struct _System* system, EntityHandle handle
             {
                 for(int i = 0; i < array_count(&system->required_components); ++i)
                 {
-                    ComponentTypeHandle* required_component_type_id = array_get(&system->required_components, i);
+                    ComponentTypeHandle* required_component_type_handle = array_get(&system->required_components, i);
 
-                    int found_idx = array_find(&entity->components.array, required_component_type_id, &_compare_component_lookup_by_type);
+                    int found_idx = array_find(&entity->components.array, required_component_type_handle, &_compare_component_lookup_by_type);
                     if(found_idx == -1)
                     {
                         added = false;
@@ -322,8 +323,8 @@ static void _system_alloc(void* new_system, void* new_system_args)
     // Go through required components and set up event callbacks
     for(int i = 0; i < array_count(&_new_system->required_components); ++i)
     {
-        int* component_type_id = array_get(&_new_system->required_components, i);
-        struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, *component_type_id);
+        int* component_type_handle = array_get(&_new_system->required_components, i);
+        struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, *component_type_handle);
         event_register_observer(&comp_cache->component_added_event, _new_system->observer);
         event_register_observer(&comp_cache->component_removed_event, _new_system->observer);
     }
@@ -337,8 +338,8 @@ static void _system_free(void* system)
 
     for(int i = 0; i < array_count(&_system->required_components); ++i)
     {
-        ComponentTypeHandle* component_type_id = array_get(&_system->required_components, i);
-        struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, *component_type_id);
+        ComponentTypeHandle* component_type_handle = array_get(&_system->required_components, i);
+        struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, *component_type_handle);
         event_deregister_observer(&comp_cache->component_added_event, _system->observer);
         event_deregister_observer(&comp_cache->component_removed_event, _system->observer);
     }
@@ -381,8 +382,8 @@ int ecs_component_types_count(void)
 
 int ecs_components_count(const struct string* name)
 {
-    int component_type_id = string_hash(name);
-    struct _ComponentCache* comp_cache =  cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    int component_type_handle = string_hash(name);
+    struct _ComponentCache* comp_cache =  cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
     return cache_ts_count(&comp_cache->components);
 }
 
@@ -456,20 +457,23 @@ void entity_destroy(EntityHandle id)
     event_send(&_ecs.entity_destroyed_event, &args);
 }
 
-void entity_add_component(EntityHandle entity_handle, const int component_type_id)
+ComponentTypeHandle entity_add_component(EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
 {
-    struct _ComponentLookup new_component;
     struct _ComponentCache* component_cache = NULL;
     bool added = false;
+
+    struct _ComponentLookup new_component;
+    new_component.id = C_NULL_COMPONENT_HANDLE;
+    new_component.type_id = C_NULL_COMPONENT_TYPE;
 
     rwlock_read_lock(&_ecs.entities.lock); // Lock entity cache
     {
         struct _Entity* entity = cache_get(&_ecs.entities.cache, entity_handle);
-        component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+        component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
 
         if(entity && component_cache)
         {
-            void* found = array_ts_find_and_get(&entity->components, &component_type_id, &_compare_component_lookup_by_type);
+            void* found = array_ts_find_and_get(&entity->components, &component_type_handle, &_compare_component_lookup_by_type);
             if(!found)
             {
                 // Cannot add a duplicate component type, must be unique
@@ -478,7 +482,7 @@ void entity_add_component(EntityHandle entity_handle, const int component_type_i
                     struct RWLock* component_lock = cache_get(&component_cache->component_locks, cache_emplace(&component_cache->component_locks, NULL));
                     rwlock_write_lock(component_lock);
                     {
-                        new_component.type_id = component_type_id;
+                        new_component.type_id = component_type_handle;
                         new_component.id = cache_emplace(&component_cache->components.cache, NULL);
                         array_ts_add(&entity->components, &new_component);
                         added = true;
@@ -499,20 +503,22 @@ void entity_add_component(EntityHandle entity_handle, const int component_type_i
         args.component_type = new_component.type_id;
         event_send(&component_cache->component_added_event, &args);
     }
+
+    return new_component.id;
 }
 
-void entity_add_component_by_name(EntityHandle entity_handle, const struct string* component_name)
+ComponentTypeHandle entity_add_component_by_name(EntityHandle entity_handle, const struct string* component_name)
 {
-    int component_type_id = string_hash(component_name);
-    entity_add_component(entity_handle, component_type_id);
+    int component_type_handle = string_hash(component_name);
+    return entity_add_component(entity_handle, component_type_handle);
 }
 
-void entity_remove_component(EntityHandle entity_handle, const int component_type_id)
+void entity_remove_component(EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
 {
     rwlock_read_lock(&_ecs.entities.lock);
     {
         struct _Entity* entity = cache_ts_get(&_ecs.entities, entity_handle);
-        struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+        struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
 
         if(entity && component_cache)
         {
@@ -521,7 +527,7 @@ void entity_remove_component(EntityHandle entity_handle, const int component_typ
                 for(int i = 0; i < array_count(&entity->components.array); ++i)
                 {
                     struct _ComponentLookup* entity_component = array_get(&entity->components.array, i);
-                    if(entity_component->type_id == component_type_id)
+                    if(entity_component->type_id == component_type_handle)
                     {
                         rwlock_write_lock(&component_cache->components.lock);
                         {
@@ -548,20 +554,20 @@ void entity_remove_component(EntityHandle entity_handle, const int component_typ
 
 void entity_remove_component_by_name(EntityHandle entity_handle, const struct string* component_name)
 {
-    int component_type_id = string_hash(component_name);
-    entity_remove_component(entity_handle, component_type_id);
+    int component_type_handle = string_hash(component_name);
+    entity_remove_component(entity_handle, component_type_handle);
 }
 
-void* entity_get_component(EntityHandle entity_id, int component_type_id)
+void* entity_get_component(EntityHandle entity_handle, int component_type_handle)
 {
     void* component = NULL;
 
     rwlock_read_lock(&_ecs.entities.lock);
     {
-        struct _Entity* entity = cache_get(&_ecs.entities.cache, entity_id);
+        struct _Entity* entity = cache_get(&_ecs.entities.cache, entity_handle);
         if(entity)
         {
-            component = _entity_get_component(entity, component_type_id, true);
+            component = _entity_get_component(entity, component_type_handle, true);
         }
     }
     rwlock_read_unlock(&_ecs.entities.lock);
@@ -569,16 +575,16 @@ void* entity_get_component(EntityHandle entity_id, int component_type_id)
     return component;
 }
 
-const void* entity_get_readonly_component(EntityHandle entity_id, const int component_type_id)
+const void* entity_get_readonly_component(EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
 {
     void* component = NULL;
 
     rwlock_read_lock(&_ecs.entities.lock);
     {
-        struct _Entity* entity = cache_get(&_ecs.entities.cache, entity_id);
+        struct _Entity* entity = cache_get(&_ecs.entities.cache, entity_handle);
         if(entity)
         {
-            component = _entity_get_component(entity, component_type_id, false);
+            component = _entity_get_component(entity, component_type_handle, false);
         }
     }
     rwlock_read_unlock(&_ecs.entities.lock);
@@ -586,10 +592,10 @@ const void* entity_get_readonly_component(EntityHandle entity_id, const int comp
     return component;
 }
 
-void* entity_get_component_by_name(EntityHandle entity_id, const struct string* component_name)
+void* entity_get_component_by_name(EntityHandle entity_handle, const struct string* component_name)
 {
-    int component_type_id = string_hash(component_name);
-    return entity_get_component(entity_id, component_type_id);
+    int component_type_handle = string_hash(component_name);
+    return entity_get_component(entity_handle, component_type_handle);
 }
 
 void entity_unget_component(EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
@@ -600,6 +606,38 @@ void entity_unget_component(EntityHandle entity_handle, const ComponentTypeHandl
 void entity_unget_readonly_component(EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
 {
     _entity_unget_component(entity_handle, component_type_handle, false);
+}
+
+ComponentHandle entity_get_component_handle(EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
+{
+    ComponentHandle ret = C_NULL_COMPONENT_HANDLE;
+
+    struct _Entity* entity = NULL;
+    rwlock_read_lock(&_ecs.entities.lock);
+    {
+        entity = cache_get(&_ecs.entities.cache, entity_handle);
+        if(entity)
+        {
+            struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
+            if(component_cache)
+            {
+                int found_idx = -1;
+                rwlock_read_lock(&entity->components.lock);
+                {
+                    found_idx = array_find(&entity->components.array, &component_type_handle, &_compare_component_lookup_by_type);
+                    if(found_idx != -1)
+                    {
+                        struct _ComponentLookup* lu = array_get(&entity->components.array, found_idx);
+                        ret = lu->id;
+                    }
+                }
+                rwlock_read_unlock(&entity->components.lock);
+            }
+        }
+    }
+    rwlock_read_unlock(&_ecs.entities.lock);
+
+    return ret;
 }
 
 int entity_component_count(EntityHandle id)
@@ -619,17 +657,80 @@ int entity_component_count(EntityHandle id)
     return count;
 }
 
+static void* _component_get(ComponentHandle component_handle, ComponentTypeHandle component_type_handle, bool write)
+{
+    void* component = NULL;
+    struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
+
+    if(rwlock_read_lock(&component_cache->components.lock))
+    {
+        struct RWLock* component_lock = cache_get(&component_cache->component_locks, component_handle);
+        if(write)
+        {
+            rwlock_write_lock(component_lock);
+        }
+        else
+        {
+            rwlock_read_lock(component_lock);
+        }
+
+        component = cache_get(&component_cache->components.cache, component_handle);
+    }
+    rwlock_read_unlock(&component_cache->components.lock);
+
+    return component;
+}
+
+void* component_get(ComponentHandle component_handle, ComponentTypeHandle component_type_handle)
+{
+    return _component_get(component_handle, component_type_handle, true);
+}
+
+const void* component_get_readonly(ComponentHandle component_handle, ComponentTypeHandle component_type_handle)
+{
+    return _component_get(component_handle, component_type_handle, false);
+}
+
+static void _component_unget(ComponentHandle component_handle, ComponentTypeHandle component_type_handle, bool write)
+{
+    struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
+
+    if(rwlock_read_lock(&component_cache->components.lock))
+    {
+        struct RWLock* component_lock = cache_get(&component_cache->component_locks, component_handle);
+        if(write)
+        {
+            rwlock_write_unlock(component_lock);
+        }
+        else
+        {
+            rwlock_read_unlock(component_lock);
+        }
+    }
+    rwlock_read_unlock(&component_cache->components.lock);
+}
+
+void component_unget(ComponentHandle component_handle, ComponentTypeHandle component_type_handle)
+{
+    _component_unget(component_handle, component_type_handle, true);
+}
+
+void component_unget_readonly(ComponentHandle component_handle, ComponentTypeHandle component_type_handle)
+{
+    _component_unget(component_handle, component_type_handle, false);
+}
+
 int component_type_register(const struct string* name, int component_type_size_bytes)
 {
-    int component_type_id = string_hash(name);
-    if(cache_map_get_hashed(&_ecs.component_caches, component_type_id))
+    int component_type_handle = string_hash(name);
+    if(cache_map_get_hashed(&_ecs.component_caches, component_type_handle))
     {
         // TODO: Log warning
         return C_NULL_COMPONENT_TYPE;
     }
 
     struct _ComponentCacheNewArgs args;
-    args.component_type_id = component_type_id;
+    args.component_type_handle = component_type_handle;
     args.item_size = component_type_size_bytes;
     args.capacity = 1024;
     args.alloc_func = NULL;
@@ -637,12 +738,12 @@ int component_type_register(const struct string* name, int component_type_size_b
 
     cache_map_emplace(&_ecs.component_caches, name->buffer, name->size, &args);
 
-    return component_type_id;
+    return component_type_handle;
 }
 
-void component_type_added_register_observer(const int component_type_id, ObserverHandle observer)
+void component_type_added_register_observer(const ComponentTypeHandle component_type_handle, ObserverHandle observer)
 {
-    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
     if(comp_cache == NULL)
     {
         // TODO log error
@@ -652,9 +753,9 @@ void component_type_added_register_observer(const int component_type_id, Observe
     event_register_observer(&comp_cache->component_added_event, observer);
 }
 
-void component_type_added_deregister_observer(const int component_type_id, ObserverHandle observer)
+void component_type_added_deregister_observer(const ComponentTypeHandle component_type_handle, ObserverHandle observer)
 {
-    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
     if(comp_cache == NULL)
     {
         // TODO log error
@@ -664,9 +765,9 @@ void component_type_added_deregister_observer(const int component_type_id, Obser
     event_deregister_observer(&comp_cache->component_added_event, observer);
 }
 
-void component_type_removed_register_observer(const int component_type_id, ObserverHandle observer)
+void component_type_removed_register_observer(const ComponentTypeHandle component_type_handle, ObserverHandle observer)
 {
-    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
     if(comp_cache == NULL)
     {
         // TODO log error
@@ -676,9 +777,9 @@ void component_type_removed_register_observer(const int component_type_id, Obser
     event_register_observer(&comp_cache->component_removed_event, observer);
 }
 
-void component_type_removed_deregister_observer(const int component_type_id, ObserverHandle observer)
+void component_type_removed_deregister_observer(const ComponentTypeHandle component_type_handle, ObserverHandle observer)
 {
-    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_id);
+    struct _ComponentCache* comp_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
     if(comp_cache == NULL)
     {
         // TODO log error
