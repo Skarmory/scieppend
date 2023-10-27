@@ -29,6 +29,7 @@ struct ComponentEventArgs
     enum ECSEventType   event_type;
     EntityHandle        entity_handle;
     ComponentTypeHandle component_type;
+    ComponentHandle     component_handle;
 };
 
 struct EntityEventArgs

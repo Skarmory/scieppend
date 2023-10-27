@@ -425,6 +425,7 @@ void entity_destroy(EntityHandle id)
                     args.event_type = EVENT_COMPONENT_REMOVED;
                     args.entity_handle = id;
                     args.component_type = component->type_id;
+                    args.component_handle = component->id;
 
                     rwlock_write_lock(&component_cache->components.lock);
                     {
@@ -501,6 +502,7 @@ ComponentTypeHandle entity_add_component(EntityHandle entity_handle, const Compo
         args.event_type = EVENT_COMPONENT_ADDED;
         args.entity_handle = entity_handle;
         args.component_type = new_component.type_id;
+        args.component_handle = new_component.id;
         event_send(&component_cache->component_added_event, &args);
     }
 
