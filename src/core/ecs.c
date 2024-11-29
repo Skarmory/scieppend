@@ -192,18 +192,20 @@ static void* _entity_get_component(struct _Entity* entity, int component_type_ha
     rwlock_read_lock(&comp_cache->components.lock);
     {
         struct RWLock* lock = cache_get(&comp_cache->component_locks, component_lu.id);
-
-        // The locking here must be unlocked by calling the unget function.
-        if(write)
+        if(lock)
         {
-            rwlock_write_lock(lock);
-        }
-        else
-        {
-            rwlock_read_lock(lock);
-        }
+            // The locking here must be unlocked by calling the unget function.
+            if(write)
+            {
+                rwlock_write_lock(lock);
+            }
+            else
+            {
+                rwlock_read_lock(lock);
+            }
 
-        component = cache_get(&comp_cache->components.cache, component_lu.id);
+            component = cache_get(&comp_cache->components.cache, component_lu.id);
+        }
     }
     rwlock_read_unlock(&comp_cache->components.lock);
 
@@ -228,14 +230,16 @@ static void _entity_unget_component(EntityHandle entity_handle, const ComponentT
                 rwlock_read_lock(&component_cache->components.lock);
                 {
                     struct RWLock* component_lock = cache_get(&component_cache->component_locks, component->id);
-
-                    if(write)
+                    if(component_lock)
                     {
-                        rwlock_write_unlock(component_lock);
-                    }
-                    else
-                    {
-                        rwlock_read_unlock(component_lock);
+                        if(write)
+                        {
+                            rwlock_write_unlock(component_lock);
+                        }
+                        else
+                        {
+                            rwlock_read_unlock(component_lock);
+                        }
                     }
                 }
                 rwlock_read_unlock(&component_cache->components.lock);
@@ -430,15 +434,18 @@ void entity_destroy(EntityHandle id)
                     rwlock_write_lock(&component_cache->components.lock);
                     {
                         struct RWLock* component_lock = cache_get(&component_cache->component_locks, component->id);
-                        rwlock_write_lock(component_lock); 
+                        if(component_lock)
                         {
-                            // Lock the component to stop access while being destroyed.
-                            cache_remove(&component_cache->components.cache, component->id);
-                        }
-                        rwlock_write_unlock(component_lock);
+                            rwlock_write_lock(component_lock);
+                            {
+                                // Lock the component to stop access while being destroyed.
+                                cache_remove(&component_cache->components.cache, component->id);
+                            }
+                            rwlock_write_unlock(component_lock);
 
-                        cache_remove(&component_cache->component_locks, component->id);
-                        array_remove_at(&entity->components.array, i);
+                            cache_remove(&component_cache->component_locks, component->id);
+                            array_remove_at(&entity->components.array, i);
+                        }
                     }
                     rwlock_write_unlock(&component_cache->components.lock);
 
@@ -446,11 +453,10 @@ void entity_destroy(EntityHandle id)
                 }
             }
             rwlock_write_unlock(&entity->components.lock);
+            cache_remove(&_ecs.entities.cache, id);
         }
     }
     rwlock_read_unlock(&_ecs.entities.lock);
-
-    cache_ts_remove(&_ecs.entities, id);
 
     struct EntityEventArgs args;
     args.event_type = EVENT_ENTITY_DESTROYED;
@@ -481,14 +487,17 @@ ComponentTypeHandle entity_add_component(EntityHandle entity_handle, const Compo
                 rwlock_write_lock(&component_cache->components.lock);
                 {
                     struct RWLock* component_lock = cache_get(&component_cache->component_locks, cache_emplace(&component_cache->component_locks, NULL));
-                    rwlock_write_lock(component_lock);
+                    if(component_lock)
                     {
-                        new_component.type_id = component_type_handle;
-                        new_component.id = cache_emplace(&component_cache->components.cache, NULL);
-                        array_ts_add(&entity->components, &new_component);
-                        added = true;
+                        rwlock_write_lock(component_lock);
+                        {
+                            new_component.type_id = component_type_handle;
+                            new_component.id = cache_emplace(&component_cache->components.cache, NULL);
+                            array_ts_add(&entity->components, &new_component);
+                            added = true;
+                        }
+                        rwlock_write_unlock(component_lock);
                     }
-                    rwlock_write_unlock(component_lock);
                 }
                 rwlock_write_unlock(&component_cache->components.lock);
             }
@@ -534,14 +543,17 @@ void entity_remove_component(EntityHandle entity_handle, const ComponentTypeHand
                         rwlock_write_lock(&component_cache->components.lock);
                         {
                             struct RWLock* component_lock = cache_get(&component_cache->component_locks, entity_component->id);
-                            rwlock_write_lock(component_lock);
+                            if(component_lock)
                             {
-                                cache_remove(&component_cache->components.cache, entity_component->id);
-                            }
-                            rwlock_write_unlock(component_lock);
+                                rwlock_write_lock(component_lock);
+                                {
+                                    cache_remove(&component_cache->components.cache, entity_component->id);
+                                }
+                                rwlock_write_unlock(component_lock);
 
-                            cache_remove(&component_cache->component_locks, entity_component->id);
-                            array_remove_at(&entity->components.array, i);
+                                cache_remove(&component_cache->component_locks, entity_component->id);
+                                array_remove_at(&entity->components.array, i);
+                            }
                         }
                         rwlock_write_unlock(&component_cache->components.lock);
                         break;
@@ -667,16 +679,19 @@ static void* _component_get(ComponentHandle component_handle, ComponentTypeHandl
     if(rwlock_read_lock(&component_cache->components.lock))
     {
         struct RWLock* component_lock = cache_get(&component_cache->component_locks, component_handle);
-        if(write)
+        if(component_lock)
         {
-            rwlock_write_lock(component_lock);
-        }
-        else
-        {
-            rwlock_read_lock(component_lock);
-        }
+            if(write)
+            {
+                rwlock_write_lock(component_lock);
+            }
+            else
+            {
+                rwlock_read_lock(component_lock);
+            }
 
-        component = cache_get(&component_cache->components.cache, component_handle);
+            component = cache_get(&component_cache->components.cache, component_handle);
+        }
     }
     rwlock_read_unlock(&component_cache->components.lock);
 
@@ -697,16 +712,19 @@ static void _component_unget(ComponentHandle component_handle, ComponentTypeHand
 {
     struct _ComponentCache* component_cache = cache_map_get_hashed(&_ecs.component_caches, component_type_handle);
 
-    if(rwlock_read_lock(&component_cache->components.lock))
+    rwlock_read_lock(&component_cache->components.lock);
     {
         struct RWLock* component_lock = cache_get(&component_cache->component_locks, component_handle);
-        if(write)
+        if(component_lock)
         {
-            rwlock_write_unlock(component_lock);
-        }
-        else
-        {
-            rwlock_read_unlock(component_lock);
+            if(write)
+            {
+                rwlock_write_unlock(component_lock);
+            }
+            else
+            {
+                rwlock_read_unlock(component_lock);
+            }
         }
     }
     rwlock_read_unlock(&component_cache->components.lock);
