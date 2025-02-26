@@ -4,6 +4,7 @@
 #include "scieppend/core/container_common.h"
 
 #include <stddef.h>
+#include <stdlib.h>
 
 static struct _ObserverManager
 {
@@ -36,6 +37,19 @@ ObserverHandle observer_create(void* observer_data, event_callback_fn event_call
 void observer_destroy(ObserverHandle handle)
 {
     cache_ts_remove(&_obs_man.observers, handle);
+}
+
+struct Event* event_new(void)
+{
+    struct Event* event = malloc(sizeof(struct Event));
+    event_init(event);
+    return event;
+}
+
+void event_free(struct Event* event)
+{
+    event_uninit(event);
+    free(event);
 }
 
 void event_init(struct Event* event)

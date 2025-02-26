@@ -63,25 +63,25 @@ void cache_uninit(struct Cache* cache);
 /* Returns the number of currently valid handles.
  * This excludes the handles that have been unlocked but are currently invalid.
  */
-int cache_size(struct Cache* cache);
+int cache_size(const struct Cache* cache);
 
 /* Return the maximum possible number of elements the cache can hold.
  */
-int cache_capacity(struct Cache* cache);
+int cache_capacity(const struct Cache* cache);
 
 /* Returns the size of a data element in bytes.
  */
-int cache_item_size(struct Cache* cache);
+int cache_item_size(const struct Cache* cache);
 
 /* Returns the number of unlocked handles.
  * This is the number of both valid and invalid handles.
  */
-int cache_used(struct Cache* cache);
+int cache_used(const struct Cache* cache);
 
 /* Check if the key generation for a handle matches what the cache is holding.
  * If true, the slot has been freed and reused.
  */ 
-bool cache_stale_handle(struct Cache* cache, int handle);
+bool cache_stale_handle(const struct Cache* cache, int handle);
 
 /* Adds an element to the cache and returns a handle to access it.
  * See allocation process at top of this file for further info.
@@ -91,7 +91,7 @@ int cache_add(struct Cache* cache, const void* item);
 
 /* Constructs an item with the given args and returns a handle to it.
  */
-int cache_emplace(struct Cache* cache, void* args);
+int cache_emplace(struct Cache* cache, const void* args);
 
 /* Removes an element from the cache.
  */
@@ -99,7 +99,7 @@ void cache_remove(struct Cache* cache, int handle);
 
 /* Returns the element a handle points to.
  */
-void* cache_get(struct Cache* cache, int handle);
+void* cache_get(const struct Cache* cache, int handle);
 
 // CACHE ITERATOR
 

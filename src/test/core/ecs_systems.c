@@ -1,201 +1,161 @@
 #include "scieppend/test/core/ecs.h"
 
-#include "scieppend/core/ecs.h"
+#include "scieppend/core/ecs_world.h"
 #include "scieppend/core/event.h"
 #include "scieppend/core/string.h"
+#include "scieppend/core/system.h"
 #include "scieppend/test/core/ecs_common.h"
 #include "scieppend/test/test.h"
 
 struct SystemTestState
 {
-    struct string component_A_name;
-    struct string component_B_name;
-    struct string component_C_name;
-    struct string sys_name;
-    struct Array  required_components;
+    struct ECSWorld* world;
 };
 
 // INTERNAL FUNCS
 
-static void _system_update(EntityHandle entity_handle)
+static void _system_update(struct ECSWorld* world, EntityHandle entity_handle)
 {
-    struct ECSTestComponentA* comp_a = entity_get_component(entity_handle, G_TEST_COMPONENT_A_ID);
-    struct ECSTestComponentB* comp_b = entity_get_component(entity_handle, G_TEST_COMPONENT_B_ID);
-    struct ECSTestComponentC* comp_c = entity_get_component(entity_handle, G_TEST_COMPONENT_C_ID);
+    struct ECSTestComponentA* comp_a = ecs_world_entity_get_component(world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+    struct ECSTestComponentB* comp_b = ecs_world_entity_get_component(world, entity_handle, G_TEST_COMPONENT_B_ID, WRITE);
+    struct ECSTestComponentC* comp_c = ecs_world_entity_get_component(world, entity_handle, G_TEST_COMPONENT_C_ID, WRITE);
 
     comp_a->x++;
     comp_a->y++;
     comp_a->z++;
 
-    entity_unget_component(entity_handle, G_TEST_COMPONENT_C_ID);
-    entity_unget_component(entity_handle, G_TEST_COMPONENT_B_ID);
-    entity_unget_component(entity_handle, G_TEST_COMPONENT_A_ID);
+    ecs_world_entity_unget_component(world, entity_handle, G_TEST_COMPONENT_C_ID, WRITE);
+    ecs_world_entity_unget_component(world, entity_handle, G_TEST_COMPONENT_B_ID, WRITE);
+    ecs_world_entity_unget_component(world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
 }
 
 static void _setup(void* userstate)
 {
-    struct SystemTestState* state = userstate;
-    string_init(&state->sys_name, "TestSystem");
-    string_init(&state->component_A_name, C_TEST_COMPONENT_A_NAME);
-    string_init(&state->component_B_name, C_TEST_COMPONENT_B_NAME);
-    string_init(&state->component_C_name, C_TEST_COMPONENT_C_NAME);
-    array_init(&state->required_components, sizeof(int), 3, NULL, NULL);
+    ecs_common_init();
     eventing_init();
-    ecs_init();
+
+    struct SystemTestState* state = userstate;
+
+    state->world = ecs_world_new();
+
+    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_A_ID, sizeof(struct ECSTestComponentA));
+    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_B_ID, sizeof(struct ECSTestComponentB));
+    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_C_ID, sizeof(struct ECSTestComponentC));
+
+    struct Array required_components;
+    array_init(&required_components, sizeof(ComponentTypeHandle), 3, NULL, NULL);
+    array_add(&required_components, &G_TEST_COMPONENT_A_ID);
+    array_add(&required_components, &G_TEST_COMPONENT_B_ID);
+    array_add(&required_components, &G_TEST_COMPONENT_C_ID);
+
+    struct string system_name;
+    string_init(&system_name, "TestSystemName");
+
+    ecs_world_system_register(state->world, &system_name, &required_components, &_system_update);
+
+    string_uninit(&system_name);
+    array_uninit(&required_components);
 }
 
 static void _teardown(void* userstate)
 {
     struct SystemTestState* state = userstate;
-    ecs_uninit();
+    ecs_world_free(state->world);
     eventing_uninit();
-    array_uninit(&state->required_components);
-    string_uninit(&state->component_C_name);
-    string_uninit(&state->component_B_name);
-    string_uninit(&state->component_A_name);
-    string_uninit(&state->sys_name);
-}
-
-static void _setup__component_types(void* userstate)
-{
-    struct SystemTestState* state = userstate;
-
-    _setup(userstate);
-
-    component_type_register(&state->component_A_name, sizeof(struct ECSTestComponentA));
-    component_type_register(&state->component_B_name, sizeof(struct ECSTestComponentB));
-    component_type_register(&state->component_C_name, sizeof(struct ECSTestComponentC));
-
-    G_TEST_COMPONENT_A_ID = string_hash(&state->component_A_name);
-    G_TEST_COMPONENT_B_ID = string_hash(&state->component_B_name);
-    G_TEST_COMPONENT_C_ID = string_hash(&state->component_C_name);
-}
-
-static void _teardown__component_types(void* userstate)
-{
-    struct SystemTestState* state = userstate;
-    _teardown(userstate);
-}
-
-static void _setup__system(void* userstate)
-{
-    struct SystemTestState* state = userstate;
-
-    _setup__component_types(userstate);
-
-    array_add(&state->required_components, &G_TEST_COMPONENT_A_ID);
-    array_add(&state->required_components, &G_TEST_COMPONENT_B_ID);
-    array_add(&state->required_components, &G_TEST_COMPONENT_C_ID);
-
-    system_register(&state->sys_name, &_system_update, &state->required_components);
-}
-
-static void _teardown__system(void* userstate)
-{
-    struct SystemTestState* state = userstate;
-    _teardown__component_types(userstate);
 }
 
 // TESTS
-
-void _test__system_register(void* userstate)
-{
-    struct SystemTestState* state = userstate;
-
-    test_assert_equal_int("systems registered count", 0, ecs_systems_count());
-
-    system_register(&state->sys_name, NULL, &state->required_components);
-
-    test_assert_equal_int("systems registered count", 1, ecs_systems_count());
-
-}
 
 void _test__system_uniqueness(void* userstate)
 {
     struct SystemTestState* state = userstate;
 
-    test_assert_equal_int("systems registered count", 0, ecs_systems_count());
+    test_assert_equal_int("systems registered count", 1, ecs_world_systems_count(state->world));
 
-    system_register(&state->sys_name, NULL, &state->required_components);
-    system_register(&state->sys_name, NULL, &state->required_components);
-    system_register(&state->sys_name, NULL, &state->required_components);
+    struct string system_name;
+    string_init(&system_name, "TestSystemName");
+    ecs_world_system_register(state->world, &system_name, NULL, NULL);
+    string_uninit(&system_name);
 
-    test_assert_equal_int("systems registered count", 1, ecs_systems_count());
+    test_assert_equal_int("systems registered count", 1, ecs_world_systems_count(state->world));
 }
 
 void _test__system_entity_required_components_added(void* userstate)
 {
     struct SystemTestState* state = userstate;
 
-    EntityHandle handle = entity_create();
+    struct string system_name;
+    string_init(&system_name, "TestSystemName");
+    struct System* system = ecs_world_get_system(state->world, &system_name);
+    string_uninit(&system_name);
 
-    int* component_type_id = array_get(&state->required_components, 0);
-    entity_add_component(handle, *component_type_id);
-    test_assert_equal_int("system has entity, 1/3 required components", 0, system_entity_count(&state->sys_name));
+    EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    component_type_id = array_get(&state->required_components, 1);
-    entity_add_component(handle, *component_type_id);
-    test_assert_equal_int("system has entity, 2/3 required components", 0, system_entity_count(&state->sys_name));
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    test_assert_equal_int("system has entity, 1/3 required components", 0, system_entities_count(system));
 
-    component_type_id = array_get(&state->required_components, 2);
-    entity_add_component(handle, *component_type_id);
-    test_assert_equal_int("system has entity, 3/3 required components", 1, system_entity_count(&state->sys_name));
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    test_assert_equal_int("system has entity, 2/3 required components", 0, system_entities_count(system));
+
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_C_ID);
+    test_assert_equal_int("system has entity, 3/3 required components", 1, system_entities_count(system));
+
+    ecs_world_destroy_entity(state->world, entity_handle);
 }
 
 void _test__system_entity_destroyed(void* userstate)
 {
     struct SystemTestState* state = userstate;
 
-    EntityHandle handle = entity_create();
+    struct string system_name;
+    string_init(&system_name, "TestSystemName");
 
-    int component_type_id = *(int*)array_get(&state->required_components, 0);
-    entity_add_component(handle, component_type_id);
+    struct System* system = ecs_world_get_system(state->world, &system_name);
+    string_uninit(&system_name);
 
-    component_type_id = *(int*)array_get(&state->required_components, 1);
-    entity_add_component(handle, component_type_id);
+    EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    component_type_id = *(int*)array_get(&state->required_components, 2);
-    entity_add_component(handle, component_type_id);
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_C_ID);
 
-    test_assert_equal_int("system has entity", 1, system_entity_count(&state->sys_name));
+    test_assert_equal_int("system has entity", 1, system_entities_count(system));
 
-    entity_destroy(handle);
+    ecs_world_destroy_entity(state->world, entity_handle);
 
-    test_assert_equal_int("system has entity", 0, system_entity_count(&state->sys_name));
+    test_assert_equal_int("system has entity", 0, system_entities_count(system));
 }
 
 void _test__system_update(void* userstate)
 {
     struct SystemTestState* state = userstate;
 
-    EntityHandle handle = entity_create();
+    EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    int component_type_id = *(int*)array_get(&state->required_components, 0);
-    entity_add_component(handle, component_type_id);
-    struct ECSTestComponentA* comp_a = entity_get_component(handle, component_type_id);
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+
+    struct ECSTestComponentA* comp_a = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
     comp_a->x = 2;
     comp_a->y = 7;
     comp_a->z = 10;
-    entity_unget_component(handle, component_type_id);
+    ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
 
-    component_type_id = *(int*)array_get(&state->required_components, 1);
-    entity_add_component(handle, component_type_id);
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_C_ID);
 
-    component_type_id = *(int*)array_get(&state->required_components, 2);
-    entity_add_component(handle, component_type_id);
-
-    systems_update();
+    ecs_world_update_systems(state->world);
 
     test_component_A_values(comp_a, 3, 8, 11);
+
+    ecs_world_destroy_entity(state->world, entity_handle);
 }
 
 void test_ecs_systems(void)
 {
     struct SystemTestState state;
     testing_add_group("system");
-    testing_add_test("system register",   &_setup, &_teardown, &_test__system_register, &state, sizeof(state));
     testing_add_test("system uniqueness", &_setup, &_teardown, &_test__system_uniqueness, &state, sizeof(state));
-    testing_add_test("system entity required components added", &_setup__system, &_teardown__system, &_test__system_entity_required_components_added, &state, sizeof(state));
-    testing_add_test("system entity destroyed", &_setup__system, &_teardown__system, &_test__system_entity_destroyed, &state, sizeof(state));
-    testing_add_test("system update", &_setup__system, &_teardown__system, &_test__system_update, &state, sizeof(state));
+    testing_add_test("system entity required components added", &_setup, &_teardown, &_test__system_entity_required_components_added, &state, sizeof(state));
+    testing_add_test("system entity destroyed", &_setup, &_teardown, &_test__system_entity_destroyed, &state, sizeof(state));
+    testing_add_test("system update", &_setup, &_teardown, &_test__system_update, &state, sizeof(state));
 }

@@ -2,19 +2,18 @@
 #define SCIEPPEND_CORE_OBSERVER_H
 
 #include "scieppend/core/array_threadsafe.h"
-
+#include "scieppend/core/event_defs.h"
 
 struct Event
 {
     struct Array_ThreadSafe observers;
 };
 
-typedef void(*event_callback_fn)(struct Event* sender, void* obs_data, void* event_args);
-typedef int ObserverHandle;
-
 ObserverHandle observer_create(void* observer_data, event_callback_fn callback_func);
 void observer_destroy(ObserverHandle handle);
 
+struct Event* event_new(void);
+void event_free(struct Event* event);
 void event_init(struct Event* event);
 void event_uninit(struct Event* event);
 int  event_observer_count(struct Event* event);

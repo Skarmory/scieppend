@@ -268,27 +268,27 @@ void cache_uninit(struct Cache* cache)
     free(cache->handles);
 }
 
-int cache_size(struct Cache* cache)
+int cache_size(const struct Cache* cache)
 {
     return cache->current_used;
 }
 
-int cache_capacity(struct Cache* cache)
+int cache_capacity(const struct Cache* cache)
 {
     return cache->capacity;
 }
 
-int cache_item_size(struct Cache* cache)
+int cache_item_size(const struct Cache* cache)
 {
     return cache->item_size;
 }
 
-int cache_used(struct Cache* cache)
+int cache_used(const struct Cache* cache)
 {
     return cache->max_used;
 }
 
-bool cache_stale_handle(struct Cache* cache, int handle)
+bool cache_stale_handle(const struct Cache* cache, int handle)
 {
     return _get_key(handle) != _get_key(cache->handles[_get_idx(handle)]);
 }
@@ -308,7 +308,7 @@ int cache_add(struct Cache* cache, const void* item)
     return next_handle;
 }
 
-int cache_emplace(struct Cache* cache, void* args)
+int cache_emplace(struct Cache* cache, const void* args)
 {
     _check_resize(cache);
 
@@ -363,7 +363,7 @@ void cache_remove(struct Cache* cache, int handle)
     --cache->current_used;
 }
 
-void* cache_get(struct Cache* cache, int handle)
+void* cache_get(const struct Cache* cache, int handle)
 {
     if(!_check_handle(cache, handle))
     {
