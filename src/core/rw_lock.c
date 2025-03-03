@@ -1,5 +1,8 @@
 #include "scieppend/core/rw_lock.h"
 
+const bool WRITE = true;
+const bool READ = false;
+
 void rwlock_init(struct RWLock* lock)
 {
     mtx_init(&lock->lock, mtx_plain);
@@ -130,4 +133,38 @@ void rwlock_write_unlock(struct RWLock* lock)
     }
 
     mtx_unlock(&lock->lock);
+}
+
+bool rwlock_lock(struct RWLock* lock, bool locktype)
+{
+    return locktype == WRITE ? rwlock_write_lock(lock) : rwlock_read_lock(lock);
+}
+
+void rwlock_unlock(struct RWLock* lock, bool locktype)
+{
+    if (locktype == WRITE)
+    {
+        rwlock_write_unlock(lock);
+    }
+    else
+    {
+        rwlock_read_unlock(lock);
+    }
+}
+
+void rwlock_set_kill(struct RWLock* lock)
+{
+    lock->kill = true;
+}
+
+void rwlock_init_wrapper(void* lock, const void* args)
+{
+    struct RWLock* _lock = lock;
+    rwlock_init(_lock);
+}
+
+void rwlock_uninit_wrapper(void* lock)
+{
+    struct RWLock* _lock = lock;
+    rwlock_uninit(_lock);
 }

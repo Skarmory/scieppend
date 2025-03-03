@@ -142,8 +142,10 @@ void array_ts_sort(struct Array_ThreadSafe* array, compare_fn comp_func)
     rwlock_write_unlock(&array->lock);
 }
 
-void* array_ts_find_and_get(struct Array_ThreadSafe* array, const void* item, compare_fn comp_func)
+void* array_ts_find_and_get(const struct Array_ThreadSafe* array, const void* item, compare_fn comp_func)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     void* ret = NULL;
 
     rwlock_read_lock(&array->lock);
@@ -157,10 +159,13 @@ void* array_ts_find_and_get(struct Array_ThreadSafe* array, const void* item, co
     rwlock_read_unlock(&array->lock);
 
     return ret;
+#pragma GCC diagnostic pop
 }
 
 void array_ts_find_and_remove(struct Array_ThreadSafe* array, const void* item, compare_fn compare_func)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
     rwlock_write_lock(&array->lock);
     {
         int idx = array_find(&array->array, item, compare_func);
@@ -170,4 +175,21 @@ void array_ts_find_and_remove(struct Array_ThreadSafe* array, const void* item, 
         }
     }
     rwlock_write_unlock(&array->lock);
+#pragma GCC diagnostic pop
+}
+
+bool array_ts_lock(const struct Array_ThreadSafe* array, bool write)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+    return write ? rwlock_write_lock(&array->lock) : rwlock_read_lock(&array->lock);
+#pragma GCC diagnostic pop
+}
+
+void  array_ts_unlock(const struct Array_ThreadSafe* array, bool write)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+    write ? rwlock_write_unlock(&array->lock) : rwlock_read_unlock(&array->lock);
+#pragma GCC diagnostic pop
 }

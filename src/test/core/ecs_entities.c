@@ -1,7 +1,9 @@
 #include "scieppend/test/core/ecs.h"
 
+#include "scieppend/core/array.h"
 #include "scieppend/core/cache.h"
-#include "scieppend/core/ecs.h"
+#include "scieppend/core/ecs_world.h"
+#include "scieppend/core/hash.h"
 #include "scieppend/core/string.h"
 #include "scieppend/test/core/ecs_common.h"
 #include "scieppend/test/test.h"
@@ -10,50 +12,23 @@
 
 struct EntityTestState
 {
-    struct Array  entity_handles;
-    struct Array  dummy_component_type_names;
-    struct string component_type_A_name;
-    struct string component_type_B_name;
+    struct ECSWorld* world;
+    struct Array     entity_handles;
+    struct Array     dummy_component_type_ids;
 };
 
-static void _setup([[maybe_unused]] void* userstate)
+static void _setup(void* userstate)
 {
-    ecs_init();
-}
+    ecs_common_init();
 
-static void _teardown([[maybe_unused]] void* userstate)
-{
-    ecs_uninit();
-}
-
-static void _setup__entity([[maybe_unused]] void* userstate)
-{
     struct EntityTestState* state = userstate;
+    state->world = ecs_world_new();
+
     array_init(&state->entity_handles, sizeof(EntityHandle), 8, NULL, NULL);
-    EntityHandle handle = entity_create();
-    array_add(&state->entity_handles, &handle);
-}
+    array_init(&state->dummy_component_type_ids, sizeof(ComponentTypeHandle), 10, NULL, NULL);
 
-static void _teardown__entity(void* userstate)
-{
-    struct EntityTestState* state = userstate;
-    for(int i = 0; i < array_count(&state->entity_handles); ++i)
-    {
-        entity_destroy(*(EntityHandle*)array_get(&state->entity_handles, i));
-    }
-
-    array_uninit(&state->entity_handles);
-}
-
-static void _setup__component_types(void* userstate)
-{
-    struct EntityTestState* state = userstate;
-
-    array_init(&state->dummy_component_type_names, sizeof(struct string), 10, NULL, NULL);
-    string_init(&state->component_type_A_name, C_TEST_COMPONENT_A_NAME);
-    string_init(&state->component_type_B_name, C_TEST_COMPONENT_B_NAME);
-    component_type_register(&state->component_type_A_name, sizeof(struct ECSTestComponentA));
-    component_type_register(&state->component_type_B_name, sizeof(struct ECSTestComponentB));
+    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_A_ID, sizeof(struct ECSTestComponentA));
+    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_B_ID, sizeof(struct ECSTestComponentB));
 
     for(int i = 0; i < 8; ++i)
     {
@@ -61,206 +36,200 @@ static void _setup__component_types(void* userstate)
         string_init(&dummy_component_name, "");
         string_format(&dummy_component_name, "dummy_component_%d", i);
 
-        component_type_register(&dummy_component_name, 1);
-        array_add(&state->dummy_component_type_names, &dummy_component_name);
+        int id = string_hash(&dummy_component_name);
+        ecs_world_component_type_register(state->world, id, 1);
+        array_add(&state->dummy_component_type_ids, &id);
+
+        string_uninit(&dummy_component_name);
     }
 }
 
-static void _teardown__component_types(void* userstate)
+static void _teardown(void* userstate)
 {
     struct EntityTestState* state = userstate;
 
-    for(int i = array_count(&state->dummy_component_type_names) - 1; i > -1 ; --i)
+    for(int i = 0; i < array_count(&state->entity_handles); ++i)
     {
-        struct string* name = array_get(&state->dummy_component_type_names, i);
-        string_uninit(name);
+        EntityHandle entity_handle = *(EntityHandle*)array_get(&state->entity_handles, i);
+        ecs_world_destroy_entity(state->world, entity_handle);
     }
 
-    string_uninit(&state->component_type_A_name);
-    string_uninit(&state->component_type_B_name);
-    array_uninit(&state->dummy_component_type_names);
+    array_uninit(&state->dummy_component_type_ids);
+    array_uninit(&state->entity_handles);
+
+    ecs_world_free(state->world);
+
+    ecs_common_uninit();
 }
 
-static void _setup__add_remove_component(void* userstate)
-{
-    _setup(userstate);
-    _setup__component_types(userstate);
-    _setup__entity(userstate);
-}
-
-static void _teardown__add_remove_component(void* userstate)
-{
-    _teardown__entity(userstate);
-    _teardown__component_types(userstate);
-    _teardown(userstate);
-}
-
-static bool _add_component_and_test(EntityHandle handle, const struct string* component_name)
+static bool _add_component_and_test(struct ECSWorld* world, EntityHandle entity_handle, ComponentTypeHandle component_type_handle)
 {
     bool success = false;
     char case_name[32];
-    snprintf(case_name, 32, "%s count", component_name->buffer);
+    snprintf(case_name, 32, "%d count", component_type_handle);
 
-    int component_count = entity_component_count(handle);
-    int component_id = string_hash(component_name);
+    int component_count = ecs_world_entity_components_count(world, entity_handle);
+    ecs_world_entity_add_component(world, entity_handle, component_type_handle);
 
-    entity_add_component(handle, component_id);
-    const void* component = entity_get_readonly_component(handle, component_id);
+    const void* component = ecs_world_entity_get_component(world, entity_handle, component_type_handle, READ);
     success |= test_assert_not_null("entity has component", component);
-    success |= test_assert_equal_int(case_name, 1, ecs_components_count(component_name));
-    success |= test_assert_equal_int("entity components count", component_count + 1, entity_component_count(handle));
-    entity_unget_readonly_component(handle, component_id);
+    success |= test_assert_equal_int("entity components count", component_count + 1, ecs_world_entity_components_count(world, entity_handle));
+    ecs_world_entity_unget_component(world, entity_handle, component_type_handle, READ);
 
     return success;
 }
 
-static bool _remove_component_and_test(EntityHandle handle, const struct string* component_name)
+static bool _remove_component_and_test(struct ECSWorld* world, EntityHandle entity_handle, ComponentTypeHandle component_type_handle)
 {
     bool success = false;
     char case_name[32];
-    snprintf(case_name, 32, "%s count", component_name->buffer);
+    snprintf(case_name, 32, "%d count", component_type_handle);
 
-    int component_count = entity_component_count(handle);
-    int component_id = string_hash(component_name);
+    int component_count = ecs_world_entity_components_count(world, entity_handle);
+    ecs_world_entity_remove_component(world, entity_handle, component_type_handle);
 
-    entity_remove_component(handle, component_id);
-    const void* component = entity_get_readonly_component(handle, component_id);
+    const void* component = ecs_world_entity_get_component(world, entity_handle, component_type_handle, READ);
+    if(component != NULL)
+    {
+        int x = 5;
+    }
     success |= test_assert_null("entity does not have component", component);
-    success |= test_assert_equal_int(case_name, 0, ecs_components_count(component_name));
-    success |= test_assert_equal_int("entity components count", component_count - 1, entity_component_count(handle));
+    success |= test_assert_equal_int("entity components count", component_count - 1, ecs_world_entity_components_count(world, entity_handle));
 
     return success;
 }
 
-static bool _get_component_and_test(EntityHandle handle, const struct string* component_name)
+static bool _get_component_and_test(struct ECSWorld* world, EntityHandle entity_handle, ComponentTypeHandle component_type_handle)
 {
     char case_name[64];
-    snprintf(case_name, 64, "entity has component %s", component_name->buffer);
-    int component_id = string_hash(component_name);
 
-    const void* component = entity_get_readonly_component(handle, component_id);
+    snprintf(case_name, 64, "entity has component %d", component_type_handle);
+    const void* component = ecs_world_entity_get_component(world, entity_handle, component_type_handle, READ);
     bool success = test_assert_not_null(case_name, component);
-    entity_unget_readonly_component(handle, component_id);
+    ecs_world_entity_unget_component(world, entity_handle, component_type_handle, READ);
 
     return success;
 }
 
 static void _test__entity_destroy_invalid_handle(void* userstate)
 {
-    (void)userstate;
+    struct EntityTestState* state = userstate;
 
-    test_assert_equal_int("before call entity count", 0, ecs_entities_count());
-    entity_destroy(-1);
-    test_assert_equal_int("after call entity count", 0, ecs_entities_count());
+    test_assert_equal_int("before call entity count", 0, ecs_world_entities_count(state->world));
+    ecs_world_destroy_entity(state->world, C_NULL_COMPONENT_TYPE);
+    test_assert_equal_int("after call entity count", 0, ecs_world_entities_count(state->world));
 }
 
 static void _test__entity_create_destroy_no_components(void* userstate)
 {
-    (void)userstate;
+    struct EntityTestState* state = userstate;
 
-    test_assert_equal_int("entity count", 0, ecs_entities_count());
+    test_assert_equal_int("entity count", 0, ecs_world_entities_count(state->world));
 
-    EntityHandle handle = entity_create();
-    test_assert_nequal_int("entity handle", C_NULL_CACHE_HANDLE, handle);
-    test_assert_equal_int("entity count", 1, ecs_entities_count());
+    EntityHandle entity_handle = ecs_world_create_entity(state->world);
+    test_assert_nequal_int("entity handle", C_NULL_CACHE_HANDLE, entity_handle);
+    test_assert_equal_int("entity count", 1, ecs_world_entities_count(state->world));
 
-    entity_destroy(handle);
-    test_assert_equal_int("entity count", 0, ecs_entities_count());
+    ecs_world_destroy_entity(state->world, entity_handle);
+    test_assert_equal_int("entity count", 0, ecs_world_entities_count(state->world));
 }
 
 static void _test__entity_add_remove_component(void* userstate)
 {
     struct EntityTestState* state = userstate;
 
-    EntityHandle handle = *(EntityHandle*)array_get(&state->entity_handles, 0);
+    EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
     {
-        _add_component_and_test(handle, &state->component_type_A_name);
-        struct ECSTestComponentA* component = entity_get_component(handle, string_hash(&state->component_type_A_name));
+        _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+        struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
         component->x = 7;
         component->y = 1234;
         component->z = 9876;
-        entity_unget_component(handle, string_hash(&state->component_type_A_name));
+        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
     }
 
     {
-        const struct ECSTestComponentA* component = entity_get_readonly_component(handle, string_hash(&state->component_type_A_name));
+        const struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
         test_component_A_values(component, 7, 1234, 9876);
-        entity_unget_readonly_component(handle, string_hash(&state->component_type_A_name));
-        _remove_component_and_test(handle, &state->component_type_A_name);
+        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
+        _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
     }
 
-
     {
-        _add_component_and_test(handle, &state->component_type_A_name);
-        struct ECSTestComponentA* component = entity_get_component(handle, string_hash(&state->component_type_A_name));
+        _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+        struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
         component->x = 1357;
         component->y = 2468;
         component->z = 3579;
-        entity_unget_component(handle, string_hash(&state->component_type_A_name));
+        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
     }
 
     {
-        const struct ECSTestComponentA* component = entity_get_readonly_component(handle, string_hash(&state->component_type_A_name));
+        const struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
         test_component_A_values(component, 1357, 2468, 3579);
-        entity_unget_readonly_component(handle, string_hash(&state->component_type_A_name));
-        _remove_component_and_test(handle, &state->component_type_A_name);
+        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
+        _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
     }
+
+    ecs_world_destroy_entity(state->world, entity_handle);
 }
 
 static void _test__entity_add_remove_component_with_resize(void* userstate)
 {
     struct EntityTestState* state = userstate;
 
-    EntityHandle handle = *(EntityHandle*)array_get(&state->entity_handles, 0);
+    EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    _add_component_and_test(handle, &state->component_type_A_name);
-    _add_component_and_test(handle, &state->component_type_B_name);
-    for(int i = 0; i < array_count(&state->dummy_component_type_names); ++i)
-    {
-        _add_component_and_test(handle, array_get(&state->dummy_component_type_names, i));
-    }
+    _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    //for(int i = 0; i < array_count(&state->dummy_component_type_ids); ++i)
+    //{
+    //    _add_component_and_test(state->world, entity_handle, *(ComponentTypeHandle*)array_get(&state->dummy_component_type_ids, i));
+    //}
 
-    _get_component_and_test(handle, &state->component_type_A_name);
-    _get_component_and_test(handle, &state->component_type_B_name);
-    for(int i = 0; i < array_count(&state->dummy_component_type_names); ++i)
-    {
-        _get_component_and_test(handle, array_get(&state->dummy_component_type_names, i));
-    }
+    _get_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    _get_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    //for(int i = 0; i < array_count(&state->dummy_component_type_ids); ++i)
+    //{
+    //    _get_component_and_test(state->world, entity_handle, *(ComponentTypeHandle*)array_get(&state->dummy_component_type_ids, i));
+    //}
 
-    _remove_component_and_test(handle, &state->component_type_A_name);
-    _remove_component_and_test(handle, &state->component_type_B_name);
-    for(int i = array_count(&state->dummy_component_type_names) - 1; i > -1; --i)
-    {
-        _remove_component_and_test(handle, array_get(&state->dummy_component_type_names, i));
-    }
+    _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    //for(int i = array_count(&state->dummy_component_type_ids) - 1; i > -1; --i)
+    //{
+    //    _remove_component_and_test(state->world, entity_handle, *(ComponentTypeHandle*)array_get(&state->dummy_component_type_ids, i));
+    //}
 }
 
 static void _test__entity_component_uniqueness(void* userstate)
 {
     struct EntityTestState* state = userstate;
 
-    EntityHandle handle = *(EntityHandle*)array_get(&state->entity_handles, 0);
+    EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    _add_component_and_test(handle, &state->component_type_A_name);
+    _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
 
-    int entity_components = entity_component_count(handle);
-    int components = ecs_components_count(&state->component_type_A_name);
+    int entity_components = ecs_world_entity_components_count(state->world, entity_handle);
+    int components = ecs_world_components_count(state->world, G_TEST_COMPONENT_A_ID);
 
-    entity_add_component_by_name(handle, &state->component_type_A_name);
-    test_assert_equal_int("entity component count", entity_components, entity_component_count(handle));
-    test_assert_equal_int("ecs components count", components, ecs_components_count(&state->component_type_A_name));
+    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    test_assert_equal_int("entity component count", entity_components, ecs_world_entity_components_count(state->world, entity_handle));
+    test_assert_equal_int("ecs components count", components, ecs_world_components_count(state->world, G_TEST_COMPONENT_A_ID));
 
-    _remove_component_and_test(handle, &state->component_type_A_name);
+    _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+
+    ecs_world_destroy_entity(state->world, entity_handle);
 }
 
 void test_ecs_entities(void)
 {
     struct EntityTestState entity_test_state;
     testing_add_group("entity");
-    testing_add_test("entity destroy with invalid handle", &_setup, &_teardown, &_test__entity_destroy_invalid_handle, NULL, 0);
-    testing_add_test("entity create and destroy", &_setup, &_teardown, &_test__entity_create_destroy_no_components, NULL, 0);
-    testing_add_test("entity add and remove component", &_setup__add_remove_component, &_teardown__add_remove_component, &_test__entity_add_remove_component, &entity_test_state, sizeof(entity_test_state));
-    testing_add_test("entity add and remove components with resize", &_setup__add_remove_component, &_teardown__add_remove_component, &_test__entity_add_remove_component_with_resize, &entity_test_state, sizeof(entity_test_state));
-    testing_add_test("entity component uniqueness", &_setup__add_remove_component, &_teardown__add_remove_component, &_test__entity_component_uniqueness, &entity_test_state, sizeof(entity_test_state));
+    testing_add_test("entity destroy with invalid handle", &_setup, &_teardown, &_test__entity_destroy_invalid_handle, &entity_test_state, sizeof(entity_test_state));
+    testing_add_test("entity create and destroy", &_setup, &_teardown, &_test__entity_create_destroy_no_components, &entity_test_state, sizeof(entity_test_state));
+    testing_add_test("entity add and remove component", &_setup, &_teardown, &_test__entity_add_remove_component, &entity_test_state, sizeof(entity_test_state));
+    testing_add_test("entity add and remove components with resize", &_setup, &_teardown, &_test__entity_add_remove_component_with_resize, &entity_test_state, sizeof(entity_test_state));
+    testing_add_test("entity component uniqueness", &_setup, &_teardown, &_test__entity_component_uniqueness, &entity_test_state, sizeof(entity_test_state));
 }

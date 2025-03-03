@@ -26,6 +26,9 @@ struct ECSTestComponentC
     char c[64];
 };
 
+void ecs_common_init(void);
+void ecs_common_uninit(void);
+
 bool test_component_A_values(const struct ECSTestComponentA* component, int expect_x, int expect_y, int expect_z);
 
 #endif

@@ -30,10 +30,10 @@ void             cache_map_uninit(struct CacheMap* map);
 
 // ACCESSORS
 
-int     cache_map_count(struct CacheMap* map);
-void*   cache_map_get(struct CacheMap* map, const void* key, int key_bytes);
-void*   cache_map_get_hashed(struct CacheMap* map, int hashed_key);
-float   cache_map_load_factor(struct CacheMap* map);
+int     cache_map_count(const struct CacheMap* map);
+void*   cache_map_get(const struct CacheMap* map, const void* key, int key_bytes);
+void*   cache_map_get_hashed(const struct CacheMap* map, int hashed_key);
+float   cache_map_load_factor(const struct CacheMap* map);
 
 struct It cache_map_begin(struct CacheMap* map);
 struct It cache_map_end(struct CacheMap* map);
@@ -43,7 +43,8 @@ void*     cache_map_it_get(const struct It* it);
 // MUTATORS
 
 void cache_map_add(struct CacheMap* map, const void* key, int key_bytes, const void* item);
-void cache_map_emplace(struct CacheMap* map, const void* key, int key_bytes, void* args);
+void cache_map_emplace(struct CacheMap* map, const void* key, int key_bytes, const void* args);
+void cache_map_emplace_hashed(struct CacheMap* map, const int hashed_key, const void* args);
 void cache_map_remove(struct CacheMap* map, const void* key, int key_bytes);
 
 #endif

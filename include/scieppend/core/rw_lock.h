@@ -3,6 +3,9 @@
 
 #include <threads.h>
 
+extern const bool WRITE;
+extern const bool READ;
+
 struct RWLock
 {
     mtx_t lock;
@@ -22,6 +25,12 @@ bool rwlock_read_lock(struct RWLock* lock);
 void rwlock_read_unlock(struct RWLock* lock);
 bool rwlock_write_lock(struct RWLock* lock);
 void rwlock_write_unlock(struct RWLock* lock);
+bool rwlock_lock(struct RWLock* lock, bool locktype);
+void rwlock_unlock(struct RWLock* lock, bool locktype);
+void rwlock_set_kill(struct RWLock* lock);
+
+void rwlock_init_wrapper(void* lock, const void* args);
+void rwlock_uninit_wrapper(void* lock);
 
 #endif
 
