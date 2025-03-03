@@ -43,9 +43,9 @@ static int _compare_component_lookup_by_type(const void* lhs, const void* rhs)
 struct ECSWorld* ecs_world_new(void)
 {
     struct ECSWorld* new_ecs_world = malloc(sizeof(struct ECSWorld));
-    cache_ts_init(&new_ecs_world->entities, sizeof(struct Entity), 1024, &entity_init_wrapper, &entity_uninit_wrapper);
-    cache_map_init(&new_ecs_world->systems, sizeof(struct System), 32, NULL, NULL);
     cache_map_init(&new_ecs_world->component_caches, sizeof(struct ComponentCache), 32, &component_cache_init_wrapper, &component_cache_uninit_wrapper);
+    cache_map_init(&new_ecs_world->systems, sizeof(struct System), 32, &system_init_wrapper, &system_uninit_wrapper);
+    cache_ts_init(&new_ecs_world->entities, sizeof(struct Entity), 1024, &entity_init_wrapper, &entity_uninit_wrapper);
 
     event_init(&new_ecs_world->entity_created_event);
     event_init(&new_ecs_world->entity_destroyed_event);
@@ -58,16 +58,9 @@ void ecs_world_free(struct ECSWorld* world)
     event_uninit(&world->entity_destroyed_event);
     event_uninit(&world->entity_created_event);
 
-    //struct It it = cache_map_begin(&world->systems);
-    //struct It end = cache_map_end(&world->systems);
-    //for(; !it_eq(&it, &end); cache_map_it_next(&it))
-    //{
-    //    system_free((struct System*)cache_map_it_get(&it));
-    //}
-
-    cache_map_uninit(&world->component_caches);
-    cache_map_uninit(&world->systems);
     cache_ts_uninit(&world->entities);
+    cache_map_uninit(&world->systems);
+    cache_map_uninit(&world->component_caches);
 
     free(world);
 }
@@ -327,8 +320,13 @@ void ecs_world_system_register(struct ECSWorld* world, const struct string* syst
         return;
     }
 
-    struct System* system = system_new(world, system_name, required_components, update_func);
-    cache_map_add(&world->systems, system_name->buffer, system_name->size, system);
+    struct SystemInitArgs args;
+    args.world = world;
+    args.name = system_name;
+    args.required_components = required_components;
+    args.update_func = update_func;
+
+    cache_map_emplace(&world->systems, system_name->buffer, system_name->size, &args);
 }
 
 struct System* ecs_world_get_system(const struct ECSWorld* world, const struct string* system_name)

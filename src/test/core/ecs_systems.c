@@ -135,10 +135,13 @@ void _test__system_update(void* userstate)
     ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
 
     struct ECSTestComponentA* comp_a = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
-    comp_a->x = 2;
-    comp_a->y = 7;
-    comp_a->z = 10;
-    ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+    if (comp_a != NULL)
+    {
+        comp_a->x = 2;
+        comp_a->y = 7;
+        comp_a->z = 10;
+        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+    }
 
     ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
     ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_C_ID);

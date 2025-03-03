@@ -10,6 +10,14 @@
 struct ECSWorld;
 struct string;
 
+struct SystemInitArgs
+{
+    struct ECSWorld* world;
+    const struct string* name;
+    const struct Array* required_components;
+    SystemUpdateFn update_func;
+};
+
 struct System
 {
     struct string name;
@@ -23,6 +31,9 @@ struct System
 struct System* system_new(struct ECSWorld* world, const struct string* name, const struct Array* required_components, SystemUpdateFn update_func);
 void system_free(struct System* system);
 void system_init(struct System* system, struct ECSWorld* world, const struct string* name, const struct Array* required_components, SystemUpdateFn update_func);
+void system_init_wrapper(void* system, const void* args);
+void system_uninit(struct System* system);
+void system_uninit_wrapper(void* system);
 
 // Accessors
 int system_entities_count(const struct System* system);

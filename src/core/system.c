@@ -81,7 +81,21 @@ void system_init(struct System* system, struct ECSWorld* world, const struct str
     }
 }
 
+void system_init_wrapper(void* system, const void* args)
+{
+    struct System* _system = system;
+    struct SystemInitArgs* _args = args;
+    system_init(_system, _args->world, _args->name, _args->required_components, _args->update_func);
+}
+
+
 void system_free(struct System* system)
+{
+    system_uninit(system);
+    free(system);
+}
+
+void system_uninit(struct System* system)
 {
     for(int i = 0; i < array_count(&system->required_components); ++i)
     {
@@ -93,7 +107,12 @@ void system_free(struct System* system)
     array_ts_uninit(&system->entity_handles);
     array_uninit(&system->required_components);
     string_uninit(&system->name);
-    free(system);
+}
+
+void system_uninit_wrapper(void* system)
+{
+    struct System* _system = system;
+    system_uninit(_system);
 }
 
 int system_entities_count(const struct System* system)
@@ -105,25 +124,11 @@ void system_update(struct System* system)
 {
     array_ts_lock(&system->entity_handles, READ);
 
-    // Lock component caches
-    for(int i = 0; i < array_count(&system->required_components); ++i)
-    {
-        ComponentTypeHandle* component_type_handle = array_get(&system->required_components, i);
-        ecs_world_component_type_lock(system->world, *component_type_handle, WRITE);
-    }
-
     // Process entities 
     for(int i = 0; i < array_count(&system->entity_handles.array); ++i)
     {
         EntityHandle entity_handle = *(EntityHandle*)array_get(&system->entity_handles.array, i);
         system->update_func(system->world, entity_handle);
-    }
-
-    // Unlock component caches
-    for(int i = 0; i < array_count(&system->required_components); ++i)
-    {
-        ComponentTypeHandle* component_type_handle = array_get(&system->required_components, i);
-        ecs_world_component_type_unlock(system->world, *component_type_handle, WRITE);
     }
 
     array_ts_unlock(&system->entity_handles, READ);
