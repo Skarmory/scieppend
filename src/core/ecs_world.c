@@ -111,6 +111,8 @@ void ecs_world_destroy_entity(struct ECSWorld* world, EntityHandle entity_handle
 
         entity_unlock(entity, WRITE);
         cache_remove(&world->entities.cache, entity_handle);
+
+        ecs_event_send_entity_event(&world->entity_destroyed_event, EVENT_ENTITY_DESTROYED, entity_handle);
     }
 
     cache_ts_unlock(&world->entities, WRITE);
@@ -134,12 +136,12 @@ void ecs_world_entity_add_component(struct ECSWorld* world, const EntityHandle e
         }
     }
 
-    cache_ts_unlock(&world->entities, READ);
-
     if(component_handle != C_NULL_COMPONENT_HANDLE)
     {
         component_cache_send(component_cache, EVENT_COMPONENT_ADDED, entity_handle, component_handle);
     }
+
+    cache_ts_unlock(&world->entities, READ);
 }
 
 void ecs_world_entity_remove_component(struct ECSWorld* world, const EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
@@ -326,7 +328,10 @@ void ecs_world_system_register(struct ECSWorld* world, const struct string* syst
     args.required_components = required_components;
     args.update_func = update_func;
 
-    cache_map_emplace(&world->systems, system_name->buffer, system_name->size, &args);
+    struct System* system = cache_map_emplace(&world->systems, system_name->buffer, system_name->size, &args);
+
+    event_register_observer(&world->entity_created_event, system->observer_handle);
+    event_register_observer(&world->entity_destroyed_event, system->observer_handle);
 }
 
 struct System* ecs_world_get_system(const struct ECSWorld* world, const struct string* system_name)
@@ -338,10 +343,25 @@ void ecs_world_update_systems(const struct ECSWorld* world)
 {
     struct It it = cache_map_begin(&world->systems);
     struct It end = cache_map_end(&world->systems);
+
+    for(; !it_eq(&it, &end); cache_map_it_next(&it))
+    {
+        struct System* system = cache_map_it_get(&it);
+        system_process_ecs_commands(system);
+    }
+
+    it = cache_map_begin(&world->systems);
     for(; !it_eq(&it, &end); cache_map_it_next(&it))
     {
         struct System* system = cache_map_it_get(&it);
         system_update(system);
+    }
+
+    it = cache_map_begin(&world->systems);
+    for(; !it_eq(&it, &end); cache_map_it_next(&it))
+    {
+        struct System* system = cache_map_it_get(&it);
+        system_process_ecs_commands(system);
     }
 }
 

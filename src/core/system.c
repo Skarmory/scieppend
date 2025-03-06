@@ -11,6 +11,18 @@
 // Pre-computed hash of "__NullSystemType" string
 const int C_NULL_SYSTEM_TYPE = -764810385;
 
+enum _EntityOperation
+{
+    ENTITY_OP_ADD,
+    ENTITY_OP_REMOVE
+};
+
+struct _EntityCommand
+{
+    EntityHandle handle;
+    enum _EntityOperation op;
+};
+
 // ---------- INTERNAL FUNCS ----------
 
 static int _compare_entity_handle(const void* lhs, const void* rhs)
@@ -20,10 +32,49 @@ static int _compare_entity_handle(const void* lhs, const void* rhs)
 
     if(*_lhs == *_rhs)
     {
-        return 0;
+        return 1;
     }
 
-    return -1;
+    return 0;
+}
+
+static void _system_add_entity(struct System* system, EntityHandle entity_handle)
+{
+    if(ecs_world_entity_has_components(system->world, entity_handle, &system->required_components))
+    {
+        if (system->state == SYSTEM_STATE_UPDATING)
+        {
+            struct _EntityCommand cmd =
+            {
+                .handle = entity_handle,
+                .op = ENTITY_OP_ADD
+            };
+
+            array_ts_add(&system->ecs_commands, &cmd);
+        }
+        else
+        {
+            array_ts_add(&system->entity_handles, &entity_handle);
+        }
+    }
+}
+
+static void _system_remove_entity(struct System* system, EntityHandle entity_handle)
+{
+    if (system->state == SYSTEM_STATE_UPDATING)
+    {
+        struct _EntityCommand cmd =
+        {
+            .handle = entity_handle,
+            .op = ENTITY_OP_REMOVE
+        };
+
+        array_ts_add(&system->ecs_commands, &cmd);
+    }
+    else
+    {
+        array_ts_find_and_remove(&system->entity_handles, &entity_handle, &_compare_entity_handle);
+    }
 }
 
 static void _system_event_callback([[maybe_unused]] struct Event* sender, void* observer_data, void* event_args)
@@ -37,17 +88,14 @@ static void _system_event_callback([[maybe_unused]] struct Event* sender, void* 
         case EVENT_ENTITY_CREATED:
             {
                 struct EntityEventArgs* args = event_args;
-                if(ecs_world_entity_has_components(system->world, args->entity_handle, &system->required_components))
-                {
-                    array_ts_add(&system->entity_handles, &args->entity_handle);
-                }
+                _system_add_entity(system, args->entity_handle);
             }
             break;
         case EVENT_COMPONENT_REMOVED:
         case EVENT_ENTITY_DESTROYED:
             {
                 struct EntityEventArgs* args = event_args;
-                array_ts_find_and_remove(&system->entity_handles, &args->entity_handle, &_compare_entity_handle);
+                _system_remove_entity(system, args->entity_handle);
             }
             break;
         default:
@@ -67,11 +115,13 @@ struct System* system_new(struct ECSWorld* world, const struct string* name, con
 void system_init(struct System* system, struct ECSWorld* world, const struct string* name, const struct Array* required_components, SystemUpdateFn update_func)
 {
     string_init(&system->name, name->buffer);
+    system->state = SYSTEM_STATE_IDLE;
     system->world = world;
     system->update_func = update_func;
     system->observer_handle = observer_create(system, &_system_event_callback);
     array_init(&system->required_components, sizeof(ComponentTypeHandle), array_count(required_components), NULL, NULL);
     array_ts_init(&system->entity_handles, sizeof(EntityHandle), DEFAULT_ENTITIES_CAPACITY, NULL, NULL);
+    array_ts_init(&system->ecs_commands, sizeof(struct _EntityCommand), 8, NULL, NULL);
 
     for(int i = 0; i < array_count(required_components); ++i)
     {
@@ -104,6 +154,7 @@ void system_uninit(struct System* system)
     }
 
     observer_destroy(system->observer_handle);
+    array_ts_uninit(&system->ecs_commands);
     array_ts_uninit(&system->entity_handles);
     array_uninit(&system->required_components);
     string_uninit(&system->name);
@@ -122,7 +173,8 @@ int system_entities_count(const struct System* system)
 
 void system_update(struct System* system)
 {
-    array_ts_lock(&system->entity_handles, READ);
+    system->state = SYSTEM_STATE_UPDATING;
+    array_ts_lock(&system->entity_handles, WRITE);
 
     // Process entities 
     for(int i = 0; i < array_count(&system->entity_handles.array); ++i)
@@ -131,5 +183,30 @@ void system_update(struct System* system)
         system->update_func(system->world, entity_handle);
     }
 
-    array_ts_unlock(&system->entity_handles, READ);
+    array_ts_unlock(&system->entity_handles, WRITE);
+    system->state = SYSTEM_STATE_IDLE;
+}
+
+void system_process_ecs_commands(struct System* system)
+{
+    array_ts_lock(&system->ecs_commands, WRITE);
+    array_ts_lock(&system->entity_handles, WRITE);
+    {
+        for(int i = 0; i < array_count(&system->ecs_commands.array); ++i)
+        {
+            struct _EntityCommand* cmd = array_get(&system->ecs_commands.array, i);
+            switch(cmd->op)
+            {
+                case ENTITY_OP_REMOVE:
+                    array_find_and_remove(&system->entity_handles.array, &cmd->handle, &_compare_entity_handle);
+                    break;
+                case ENTITY_OP_ADD:
+                    array_add(&system->entity_handles.array, &cmd->handle);
+                    break;
+            }
+        }
+    }
+    array_ts_unlock(&system->entity_handles, WRITE);
+    array_clear(&system->ecs_commands.array);
+    array_ts_unlock(&system->ecs_commands, WRITE);
 }
