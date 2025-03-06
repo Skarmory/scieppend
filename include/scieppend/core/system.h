@@ -10,6 +10,12 @@
 struct ECSWorld;
 struct string;
 
+enum SystemState
+{
+    SYSTEM_STATE_IDLE,
+    SYSTEM_STATE_UPDATING
+};
+
 struct SystemInitArgs
 {
     struct ECSWorld* world;
@@ -21,11 +27,13 @@ struct SystemInitArgs
 struct System
 {
     struct string name;
+    enum SystemState state;
     struct ECSWorld* world;
     SystemUpdateFn update_func;
     ObserverHandle observer_handle;
     struct Array required_components;
     struct Array_ThreadSafe entity_handles;
+    struct Array_ThreadSafe ecs_commands;
 };
 
 struct System* system_new(struct ECSWorld* world, const struct string* name, const struct Array* required_components, SystemUpdateFn update_func);
@@ -40,5 +48,6 @@ int system_entities_count(const struct System* system);
 
 // Mutators
 void system_update(struct System* system);
+void system_process_ecs_commands(struct System* system);
 
 #endif
