@@ -43,8 +43,8 @@ void*     cache_map_it_get(const struct It* it);
 // MUTATORS
 
 void cache_map_add(struct CacheMap* map, const void* key, int key_bytes, const void* item);
-void cache_map_emplace(struct CacheMap* map, const void* key, int key_bytes, const void* args);
-void cache_map_emplace_hashed(struct CacheMap* map, const int hashed_key, const void* args);
+void* cache_map_emplace(struct CacheMap* map, const void* key, int key_bytes, const void* args);
+void* cache_map_emplace_hashed(struct CacheMap* map, const int hashed_key, const void* args);
 void cache_map_remove(struct CacheMap* map, const void* key, int key_bytes);
 
 #endif
