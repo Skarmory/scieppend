@@ -88,7 +88,7 @@ int ecs_world_components_count(const struct ECSWorld* world, ComponentTypeHandle
 
 EntityHandle ecs_world_create_entity(struct ECSWorld* world)
 {
-    return cache_ts_emplace(&world->entities, NULL);
+    return cache_ts_emplace(&world->entities, world);
 }
 
 void ecs_world_destroy_entity(struct ECSWorld* world, EntityHandle entity_handle)
