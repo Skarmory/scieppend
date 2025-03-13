@@ -188,6 +188,23 @@ int ecs_world_entity_components_count(struct ECSWorld* world, EntityHandle entit
     return count;
 }
 
+ComponentHandle ecs_world_entity_get_component_handle(struct ECSWorld* world, const EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
+{
+    ComponentHandle component_handle = C_NULL_COMPONENT_HANDLE;
+
+    cache_ts_lock(&world->entities, READ);
+
+    struct Entity* entity = cache_get(&world->entities.cache, entity_handle);
+    if(entity)
+    {
+        component_handle = entity_get_component(entity, component_type_handle);
+    }
+
+    cache_ts_unlock(&world->entities, READ);
+
+    return component_handle;
+}
+
 bool ecs_world_entity_has_component(struct ECSWorld* world, EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
 {
     bool has = false;

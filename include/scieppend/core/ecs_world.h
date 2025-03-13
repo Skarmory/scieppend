@@ -31,6 +31,7 @@ void ecs_world_entity_unget_component(struct ECSWorld* world, const EntityHandle
 bool ecs_world_entity_has_component(struct ECSWorld* world, EntityHandle entity_handle, const ComponentTypeHandle component_type_handle);
 bool ecs_world_entity_has_components(struct ECSWorld* world, EntityHandle entity_handle, const struct Array* component_type_handles);
 int ecs_world_entity_components_count(struct ECSWorld* world, EntityHandle entity_handle);
+ComponentHandle ecs_world_entity_get_component_handle(struct ECSWorld* world, const EntityHandle entity_handle, const ComponentTypeHandle component_type_handle);
 
 // Component type functions
 void ecs_world_component_type_register(struct ECSWorld* world, const ComponentTypeHandle component_type_handle, int bytes);
