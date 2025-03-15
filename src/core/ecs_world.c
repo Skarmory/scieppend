@@ -239,23 +239,27 @@ bool ecs_world_entity_has_components(struct ECSWorld* world, EntityHandle entity
     return has;
 }
 
-// Must have locked the component type before calling.
 void* ecs_world_entity_get_component(struct ECSWorld* world, const EntityHandle entity_handle, const ComponentTypeHandle component_type_handle, bool write)
 {
+    struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
+    if (!component_cache)
+    {
+        return NULL;
+    }
+
     void* component = NULL;
     cache_ts_lock(&world->entities, READ);
 
     const struct Entity* entity = cache_get(&world->entities.cache, entity_handle);
-    if(entity)
+    if(entity && entity_lock(entity, READ))
     {
         ComponentHandle component_handle = entity_get_component(entity, component_type_handle);
-        if(component_handle != C_NULL_COMPONENT_HANDLE)
+        if (component_handle != C_NULL_COMPONENT_HANDLE)
         {
-            struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
-            component_cache_lock(component_cache, READ);
             component = component_cache_get_component(component_cache, component_handle, write);
-            component_cache_unlock(component_cache, READ);
         }
+
+        entity_unlock(entity, READ);
     }
 
     cache_ts_unlock(&world->entities, READ);
@@ -274,21 +278,51 @@ void ecs_world_entity_unget_component(struct ECSWorld* world, const EntityHandle
     cache_ts_lock(&world->entities, READ);
     {
         struct Entity* entity = cache_get(&world->entities.cache, entity_handle);
-        if (entity != NULL)
+        if (entity != NULL && entity_lock(entity, READ))
         {
-            entity_lock(entity, READ);
+            ComponentHandle component_handle = entity_get_component(entity, component_type_handle);
+            if (component_handle != C_NULL_COMPONENT_HANDLE)
             {
-                ComponentHandle component_handle = entity_get_component(entity, component_type_handle);
-                if (component_handle != C_NULL_COMPONENT_HANDLE)
-                {
-                    component_cache_unget_component(component_cache, component_handle, write);
-                }
+                component_cache_unget_component(component_cache, component_handle, write);
             }
+
             entity_unlock(entity, READ);
         }
     }
     cache_ts_unlock(&world->entities, READ);
 }
+
+// Component functions
+
+void* ecs_world_get_component(struct ECSWorld* world, const ComponentHandle component_handle, const ComponentTypeHandle component_type_handle, bool write)
+{
+    void* component = NULL;
+
+    if(component_handle != C_NULL_COMPONENT_HANDLE)
+    {
+        struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
+        if (component_cache != NULL)
+        {
+            component = component_cache_get_component(component_cache, component_handle, write);
+        }
+    }
+
+    return component;
+}
+
+void ecs_world_unget_component(struct ECSWorld* world, const ComponentHandle component_handle, const ComponentTypeHandle component_type_handle, bool write)
+{
+    if(component_handle != C_NULL_COMPONENT_HANDLE)
+    {
+        struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
+        if(component_cache != NULL)
+        {
+            component_cache_unget_component(component_cache, component_handle, write);
+        }
+    }
+}
+
+// Component type functions
 
 void ecs_world_component_type_register(struct ECSWorld* world, const ComponentTypeHandle component_type_handle, int bytes)
 {
