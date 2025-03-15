@@ -2,6 +2,16 @@
 
 #include "scieppend/core/event.h"
 
+enum ECSEventType component_event_get_event_type(struct ComponentEventArgs* args)
+{
+    return args->base.base.event_type;
+}
+
+enum ECSEventType entity_event_get_event_type(struct EntityEventArgs* args)
+{
+    return args->base.event_type;
+}
+
 void ecs_event_send_entity_event(struct Event* event, enum ECSEventType event_type, EntityHandle entity_handle)
 {
     struct EntityEventArgs event_args;
