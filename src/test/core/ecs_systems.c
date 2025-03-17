@@ -16,17 +16,17 @@ struct SystemTestState
 
 static void _system_update(struct ECSWorld* world, EntityHandle entity_handle)
 {
-    struct ECSTestComponentA* comp_a = ecs_world_entity_get_component(world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
-    struct ECSTestComponentB* comp_b = ecs_world_entity_get_component(world, entity_handle, G_TEST_COMPONENT_B_ID, WRITE);
-    struct ECSTestComponentC* comp_c = ecs_world_entity_get_component(world, entity_handle, G_TEST_COMPONENT_C_ID, WRITE);
+    struct ECSTestComponentA* comp_a = ecs_world_entity_get_component(world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
+    struct ECSTestComponentB* comp_b = ecs_world_entity_get_component(world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB), WRITE);
+    struct ECSTestComponentC* comp_c = ecs_world_entity_get_component(world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentC), WRITE);
 
     comp_a->x++;
     comp_a->y++;
     comp_a->z++;
 
-    ecs_world_entity_unget_component(world, entity_handle, G_TEST_COMPONENT_C_ID, WRITE);
-    ecs_world_entity_unget_component(world, entity_handle, G_TEST_COMPONENT_B_ID, WRITE);
-    ecs_world_entity_unget_component(world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+    ecs_world_entity_unget_component(world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentC), WRITE);
+    ecs_world_entity_unget_component(world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB), WRITE);
+    ecs_world_entity_unget_component(world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
 }
 
 static void _setup(void* userstate)
@@ -38,15 +38,15 @@ static void _setup(void* userstate)
 
     state->world = ecs_world_new();
 
-    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_A_ID, sizeof(struct ECSTestComponentA));
-    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_B_ID, sizeof(struct ECSTestComponentB));
-    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_C_ID, sizeof(struct ECSTestComponentC));
+    ecs_world_component_type_register(state->world, COMPONENT_TYPE_ID(ECSTestComponentA), sizeof(struct ECSTestComponentA));
+    ecs_world_component_type_register(state->world, COMPONENT_TYPE_ID(ECSTestComponentB), sizeof(struct ECSTestComponentB));
+    ecs_world_component_type_register(state->world, COMPONENT_TYPE_ID(ECSTestComponentC), sizeof(struct ECSTestComponentC));
 
     struct Array required_components;
     array_init(&required_components, sizeof(ComponentTypeHandle), 3, NULL, NULL);
-    array_add(&required_components, &G_TEST_COMPONENT_A_ID);
-    array_add(&required_components, &G_TEST_COMPONENT_B_ID);
-    array_add(&required_components, &G_TEST_COMPONENT_C_ID);
+    array_add(&required_components, &COMPONENT_TYPE_ID(ECSTestComponentA));
+    array_add(&required_components, &COMPONENT_TYPE_ID(ECSTestComponentB));
+    array_add(&required_components, &COMPONENT_TYPE_ID(ECSTestComponentC));
 
     struct string system_name;
     string_init(&system_name, "TestSystemName");
@@ -91,13 +91,13 @@ void _test__system_entity_required_components_added(void* userstate)
 
     EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
     test_assert_equal_int("system has entity, 1/3 required components", 0, system_entities_count(system));
 
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB));
     test_assert_equal_int("system has entity, 2/3 required components", 0, system_entities_count(system));
 
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_C_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentC));
     test_assert_equal_int("system has entity, 3/3 required components", 1, system_entities_count(system));
 
     ecs_world_destroy_entity(state->world, entity_handle);
@@ -115,9 +115,9 @@ void _test__system_entity_destroyed(void* userstate)
 
     EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_C_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB));
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentC));
 
     test_assert_equal_int("system has entity", 1, system_entities_count(system));
 
@@ -132,19 +132,19 @@ void _test__system_update(void* userstate)
 
     EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
 
-    struct ECSTestComponentA* comp_a = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+    struct ECSTestComponentA* comp_a = ecs_world_entity_get_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
     if (comp_a != NULL)
     {
         comp_a->x = 2;
         comp_a->y = 7;
         comp_a->z = 10;
-        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+        ecs_world_entity_unget_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
     }
 
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_C_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB));
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentC));
 
     ecs_world_update_systems(state->world);
 

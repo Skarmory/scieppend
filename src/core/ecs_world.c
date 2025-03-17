@@ -2,6 +2,7 @@
 
 #include "scieppend/core/cache_map.h"
 #include "scieppend/core/cache_threadsafe.h"
+#include "scieppend/core/component.h"
 #include "scieppend/core/component_cache.h"
 #include "scieppend/core/ecs_events.h"
 #include "scieppend/core/entity.h"
@@ -11,7 +12,7 @@
 #include <stdlib.h>
 
 // Pre-computed hash of "__NullComponentType" string
-const int C_NULL_COMPONENT_TYPE = 2025596145;
+const int C_NULL_COMPONENT_TYPE = NULL_COMPONENT_TYPE_PREHASH_MACRO;
 const int C_NULL_COMPONENT_HANDLE = 0xffffffff;
 
 struct ECSWorld

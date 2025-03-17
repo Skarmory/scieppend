@@ -6,23 +6,22 @@
 
 #include <string.h>
 
-const char* C_TEST_COMPONENT_A_NAME = "TestComponentA";
-const char* C_TEST_COMPONENT_B_NAME = "TestComponentB";
-const char* C_TEST_COMPONENT_C_NAME = "TestComponentC";
-
-int G_TEST_COMPONENT_A_ID = -1;
-int G_TEST_COMPONENT_B_ID = -1;
-int G_TEST_COMPONENT_C_ID = -1;
+COMPONENT_TYPE_DEF(ECSTestComponentA);
+COMPONENT_TYPE_DEF(ECSTestComponentB);
+COMPONENT_TYPE_DEF(ECSTestComponentC);
 
 void ecs_common_init(void)
 {
-    G_TEST_COMPONENT_A_ID = hash(C_TEST_COMPONENT_A_NAME, strlen(C_TEST_COMPONENT_A_NAME));
-    G_TEST_COMPONENT_B_ID = hash(C_TEST_COMPONENT_B_NAME, strlen(C_TEST_COMPONENT_B_NAME));
-    G_TEST_COMPONENT_C_ID = hash(C_TEST_COMPONENT_C_NAME, strlen(C_TEST_COMPONENT_C_NAME));
+    COMPONENT_TYPE_INIT(ECSTestComponentA);
+    COMPONENT_TYPE_INIT(ECSTestComponentB);
+    COMPONENT_TYPE_INIT(ECSTestComponentC);
 }
 
 void ecs_common_uninit(void)
 {
+    COMPONENT_TYPE_UNINIT(ECSTestComponentA);
+    COMPONENT_TYPE_UNINIT(ECSTestComponentB);
+    COMPONENT_TYPE_UNINIT(ECSTestComponentC);
 }
 
 bool test_component_A_values(const struct ECSTestComponentA* component, int expect_x, int expect_y, int expect_z)
