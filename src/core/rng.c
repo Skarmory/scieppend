@@ -102,7 +102,7 @@ int rng_range(struct RNG* rng, int min_inclusive, int max_inclusive)
         min_inclusive = tmp;
     }
 
-    return min_inclusive + (rng_get(rng) % (max_inclusive - min_inclusive + 1));
+    return min_inclusive + (gen  % (max_inclusive - min_inclusive + 1));
 }
 
 float rng_get_float(struct RNG* rng)
