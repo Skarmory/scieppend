@@ -28,6 +28,12 @@ void rng_free(struct RNG* rng);
  */
 int rng_get(struct RNG* rng);
 
+/* Get a random int within the bounds of the parameters.
+ * Switches max and min around if they are input incorrectly.
+ * This will always invoke a number generation.
+ */
+int rng_range(struct RNG* rng, int min_inclusive, int max_exclusive);
+
 /* Get random float.
  */
 float rng_get_float(struct RNG* rng);

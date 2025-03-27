@@ -91,6 +91,20 @@ int rng_get(struct RNG* rng)
     return C_LOWER_MASK & value;
 }
 
+int rng_range(struct RNG* rng, int min_inclusive, int max_inclusive)
+{
+    int gen = rng_get(rng);
+
+    if (max_inclusive < min_inclusive)
+    {
+        int tmp = max_inclusive;
+        max_inclusive = min_inclusive;
+        min_inclusive = tmp;
+    }
+
+    return min_inclusive + (rng_get(rng) % (max_inclusive - min_inclusive + 1));
+}
+
 float rng_get_float(struct RNG* rng)
 {
     return (float)rng_get(rng) / (float)INT_MAX;
