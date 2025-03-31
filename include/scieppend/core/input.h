@@ -6,6 +6,9 @@
 #include <stdbool.h>
 
 bool input_get_key(enum KeyCode key);
+void input_poll(void);
+void input_init(void);
+void input_uninit(void);
 
 #endif
 
