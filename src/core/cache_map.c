@@ -85,7 +85,7 @@ static void _resize(struct CacheMap* map)
 {
     int new_bucket_count = map->bucket_count << 1;
 
-    struct CacheMapBucketItem* new_buckets = malloc(new_bucket_count * sizeof(struct CacheMapBucketItem));
+    struct CacheMapBucketItem* new_buckets = malloc(new_bucket_count * map->bucket_capacity * sizeof(struct CacheMapBucketItem));
 
     _init_bucket_items(new_buckets, new_bucket_count, map->bucket_capacity);
 

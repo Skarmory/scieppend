@@ -1,5 +1,6 @@
 #include "scieppend/core/ecs_world.h"
 
+#include "scieppend/core/array.h"
 #include "scieppend/core/cache_map.h"
 #include "scieppend/core/cache_threadsafe.h"
 #include "scieppend/core/component.h"
@@ -9,6 +10,7 @@
 #include "scieppend/core/string.h"
 #include "scieppend/core/system.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 // Pre-computed hash of "__NullComponentType" string
@@ -367,11 +369,22 @@ void ecs_world_component_type_deregister_observer(struct ECSWorld* world, const 
     component_cache_deregister_observer(component_cache, observer);
 }
 
+bool ecs_world_component_type_is_registered(struct ECSWorld* world, const ComponentTypeHandle component_type_handle)
+{
+    return cache_map_get_hashed(&world->component_caches, component_type_handle) != NULL;
+}
+
 void ecs_world_system_register(struct ECSWorld* world, const struct string* system_name, const struct Array* required_components, SystemUpdateFn update_func)
 {
     if(cache_map_get(&world->systems, system_name->buffer, system_name->size))
     {
         return;
+    }
+
+    for(int i = 0; i < array_count(required_components); ++i)
+    {
+        ComponentTypeHandle ct_h = *(ComponentHandle*)array_get(required_components, i);
+        assert(ecs_world_component_type_is_registered(world, ct_h)  && "World does not have component type registered");
     }
 
     struct SystemInitArgs args;

@@ -41,6 +41,7 @@ void ecs_world_component_type_lock(struct ECSWorld* world, const ComponentTypeHa
 void ecs_world_component_type_unlock(struct ECSWorld* world, const ComponentTypeHandle component_type_handle, bool write);
 void ecs_world_component_type_register_observer(struct ECSWorld* world, const ComponentTypeHandle component_type_handle, const ObserverHandle observer);
 void ecs_world_component_type_deregister_observer(struct ECSWorld* world, const ComponentTypeHandle component_type_handle, const ObserverHandle observer);
+bool ecs_world_component_type_is_registered(struct ECSWorld* world, const ComponentTypeHandle component_type_handle);
 
 // System functions
 void ecs_world_system_register(struct ECSWorld* world, const struct string* system_name, const struct Array* required_components, SystemUpdateFn update_func);
