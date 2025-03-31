@@ -189,6 +189,4 @@ enum KeyCode
     //KEYCODE_Y_ACUTE                 = 237
 };
 
-enum KeyCode get_key(void);
-
 #endif

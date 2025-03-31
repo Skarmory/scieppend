@@ -1,6 +1,7 @@
 #include "scieppend/core/input.h"
 
 #include "scieppend/core/cache_map.h"
+#include "scieppend/core/log.h"
 #include "scieppend/core/term.h"
 
 #include <string.h>
@@ -19,23 +20,50 @@ static struct _InputManager
     struct CacheMap pressed;
 } _input_manager;
 
-static void _handle_escape_sequence(char buf[8])
+static enum KeyCode _handle_escape_sequence(char buf[8])
 {
     if(strcmp(buf, C_ARROW_UP) == 0)
     {
+        return KEYCODE_ARROW_UP;
     }
 
     if(strcmp(buf, C_ARROW_DOWN) == 0)
     {
+        return KEYCODE_ARROW_DOWN;
     }
 
     if(strcmp(buf, C_ARROW_RIGHT) == 0)
     {
+        return KEYCODE_ARROW_RIGHT;
     }
 
     if(strcmp(buf, C_ARROW_LEFT) == 0)
     {
+        return KEYCODE_ARROW_LEFT;
     }
+
+    return KEYCODE_UNKNOWN;
+}
+
+static enum KeyCode _poll(void)
+{
+    char buf[8];
+    term_getch(buf, 8);
+    int buflen = strlen(buf);
+
+    if (buflen == 1)
+    {
+        // Simple ASCII code to handle
+        if((buf[0] >= KEYCODE_CHAR_RANGE_START && buf[0] <= KEYCODE_CHAR_RANGE_END) || buf[0] == KEYCODE_ENTER || buf[0] == KEYCODE_ESC || buf[0] == KEYCODE_BACKSPACE)
+        {
+            return buf[0];
+        }
+
+        return KEYCODE_UNKNOWN;
+    }
+
+    // If buffer length is > 1 from a single char, it must be an escape key or special character of some sort
+    return _handle_escape_sequence(buf);
 }
 
 bool input_get_key(enum KeyCode key)
@@ -45,20 +73,11 @@ bool input_get_key(enum KeyCode key)
 
 void input_poll(void)
 {
-    char buf[8];
-    term_getch(buf, 8);
-
-    int buflen = strlen(buf);
-
-    if(buflen == 1)
+    cache_map_clear(&_input_manager.pressed);
+    enum KeyCode kc = _poll();
+    if(kc != KEYCODE_UNKNOWN)
     {
-        enum KeyCode key = buf[0];
-        cache_map_add(&_input_manager.pressed, &key, sizeof(enum KeyCode), &key);
-    }
-    else
-    {
-        // If buffer length is > 1 from a single char, it must be an escape key or special character of some sort
-        //return _handle_escape_sequence(buf) == key;
+        cache_map_add(&_input_manager.pressed, &kc, sizeof(enum KeyCode), &kc);
     }
 }
 
