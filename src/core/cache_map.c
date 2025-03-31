@@ -40,6 +40,14 @@ static inline struct CacheMapBucketItem* _get_bucket_item(struct CacheMapBucketI
 
 static inline struct CacheMapBucketItem* _get_next_bucket_item(struct CacheMapBucketItem* buckets, int hashed_key, int bucket_count, int bucket_capacity)
 {
+    // First check if this key already exists, if it does then we must reuse it.
+    struct CacheMapBucketItem* item = _get_bucket_item(buckets, hashed_key, bucket_count, bucket_capacity);
+    if (item != NULL)
+    {
+        return item;
+    }
+
+    // Key doesn't exist, so find a free spot
     int bucket_idx = _get_bucket_index(hashed_key, bucket_count);
     for(int item_idx = 0; item_idx < bucket_capacity; ++item_idx)
     {
@@ -218,9 +226,15 @@ void cache_map_add(struct CacheMap* map, const void* key, int key_bytes, const v
     }
 
     int item_h = cache_add(&map->bucket_items, item);
-
     int hashed_key = hash(key, key_bytes);
+
     struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+    if(new_bucket_item == NULL)
+    {
+        _resize(map);
+        new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+    }
+
     new_bucket_item->key = hashed_key;
     new_bucket_item->handle = item_h;
 }
@@ -233,9 +247,15 @@ void* cache_map_emplace(struct CacheMap* map, const void* key, int key_bytes, co
     }
 
     int hashed_key = hash(key, key_bytes);
-
     int item_h = cache_emplace(&map->bucket_items, args);
+
     struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+    if(new_bucket_item == NULL)
+    {
+        _resize(map);
+        new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+    }
+
     new_bucket_item->key = hashed_key;
     new_bucket_item->handle = item_h;
 
@@ -250,7 +270,14 @@ void* cache_map_emplace_hashed(struct CacheMap* map, const int hashed_key, const
     }
 
     int item_h = cache_emplace(&map->bucket_items, args);
+
     struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+    if(new_bucket_item == NULL)
+    {
+        _resize(map);
+        new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+    }
+
     new_bucket_item->key = hashed_key;
     new_bucket_item->handle = item_h;
 
