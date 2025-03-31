@@ -225,16 +225,21 @@ void cache_map_add(struct CacheMap* map, const void* key, int key_bytes, const v
         _resize(map);
     }
 
-    int item_h = cache_add(&map->bucket_items, item);
     int hashed_key = hash(key, key_bytes);
-
     struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
+
     if(new_bucket_item == NULL)
     {
         _resize(map);
         new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
     }
 
+    if(new_bucket_item->handle != C_NULL_CACHE_HANDLE)
+    {
+        cache_remove(&map->bucket_items, new_bucket_item->handle);
+    }
+
+    int item_h = cache_add(&map->bucket_items, item);
     new_bucket_item->key = hashed_key;
     new_bucket_item->handle = item_h;
 }
@@ -247,19 +252,7 @@ void* cache_map_emplace(struct CacheMap* map, const void* key, int key_bytes, co
     }
 
     int hashed_key = hash(key, key_bytes);
-    int item_h = cache_emplace(&map->bucket_items, args);
-
-    struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
-    if(new_bucket_item == NULL)
-    {
-        _resize(map);
-        new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
-    }
-
-    new_bucket_item->key = hashed_key;
-    new_bucket_item->handle = item_h;
-
-    return cache_map_get_hashed(map, hashed_key);
+    return cache_map_emplace_hashed(map, hashed_key, args);
 }
 
 void* cache_map_emplace_hashed(struct CacheMap* map, const int hashed_key, const void* args)
@@ -269,8 +262,6 @@ void* cache_map_emplace_hashed(struct CacheMap* map, const int hashed_key, const
         _resize(map);
     }
 
-    int item_h = cache_emplace(&map->bucket_items, args);
-
     struct CacheMapBucketItem* new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
     if(new_bucket_item == NULL)
     {
@@ -278,6 +269,12 @@ void* cache_map_emplace_hashed(struct CacheMap* map, const int hashed_key, const
         new_bucket_item = _get_next_bucket_item(map->buckets, hashed_key, map->bucket_count, map->bucket_capacity);
     }
 
+    if(new_bucket_item->handle != C_NULL_CACHE_HANDLE)
+    {
+        cache_remove(&map->bucket_items, new_bucket_item->handle);
+    }
+
+    int item_h = cache_emplace(&map->bucket_items, args);
     new_bucket_item->key = hashed_key;
     new_bucket_item->handle = item_h;
 
