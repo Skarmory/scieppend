@@ -1,27 +1,22 @@
 #ifndef SCIEPPEND_TEST_CORE_ECS_COMMON_H
 #define SCIEPPEND_TEST_CORE_ECS_COMMON_H
 
-extern const char* C_TEST_COMPONENT_A_NAME;
-extern const char* C_TEST_COMPONENT_B_NAME;
-extern const char* C_TEST_COMPONENT_C_NAME;
-extern int G_TEST_COMPONENT_A_ID;
-extern int G_TEST_COMPONENT_B_ID;
-extern int G_TEST_COMPONENT_C_ID;
+#include "scieppend/core/component.h"
 
-struct ECSTestComponentA
+COMPONENT_TYPE_DECL(ECSTestComponentA)
 {
     int x;
     int y;
     int z;
 };
 
-struct ECSTestComponentB
+COMPONENT_TYPE_DECL(ECSTestComponentB)
 {
     float a;
     float b;
 };
 
-struct ECSTestComponentC
+COMPONENT_TYPE_DECL(ECSTestComponentC)
 {
     char c[64];
 };

@@ -5,9 +5,11 @@
 #include "scieppend/core/ecs_defs.h"
 
 struct Array;
+struct ECSWorld;
 
 struct Entity
 {
+    struct ECSWorld* owner;
     struct Array_ThreadSafe components;
 };
 
@@ -17,7 +19,7 @@ struct ComponentLookup
     ComponentTypeHandle component_type_handle;
 };
 
-void entity_init(struct Entity* entity);
+void entity_init(struct Entity* entity, struct ECSWorld* owner);
 void entity_uninit(struct Entity* entity);
 void entity_init_wrapper(void* entity, const void* args);
 void entity_uninit_wrapper(void* entity);

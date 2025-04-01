@@ -1,17 +1,20 @@
 #include "scieppend/core/ecs_world.h"
 
+#include "scieppend/core/array.h"
 #include "scieppend/core/cache_map.h"
 #include "scieppend/core/cache_threadsafe.h"
+#include "scieppend/core/component.h"
 #include "scieppend/core/component_cache.h"
 #include "scieppend/core/ecs_events.h"
 #include "scieppend/core/entity.h"
 #include "scieppend/core/string.h"
 #include "scieppend/core/system.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 // Pre-computed hash of "__NullComponentType" string
-const int C_NULL_COMPONENT_TYPE = 2025596145;
+const int C_NULL_COMPONENT_TYPE = NULL_COMPONENT_TYPE_PREHASH_MACRO;
 const int C_NULL_COMPONENT_HANDLE = 0xffffffff;
 
 struct ECSWorld
@@ -88,7 +91,7 @@ int ecs_world_components_count(const struct ECSWorld* world, ComponentTypeHandle
 
 EntityHandle ecs_world_create_entity(struct ECSWorld* world)
 {
-    return cache_ts_emplace(&world->entities, NULL);
+    return cache_ts_emplace(&world->entities, world);
 }
 
 void ecs_world_destroy_entity(struct ECSWorld* world, EntityHandle entity_handle)
@@ -188,6 +191,23 @@ int ecs_world_entity_components_count(struct ECSWorld* world, EntityHandle entit
     return count;
 }
 
+ComponentHandle ecs_world_entity_get_component_handle(struct ECSWorld* world, const EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
+{
+    ComponentHandle component_handle = C_NULL_COMPONENT_HANDLE;
+
+    cache_ts_lock(&world->entities, READ);
+
+    struct Entity* entity = cache_get(&world->entities.cache, entity_handle);
+    if(entity)
+    {
+        component_handle = entity_get_component(entity, component_type_handle);
+    }
+
+    cache_ts_unlock(&world->entities, READ);
+
+    return component_handle;
+}
+
 bool ecs_world_entity_has_component(struct ECSWorld* world, EntityHandle entity_handle, const ComponentTypeHandle component_type_handle)
 {
     bool has = false;
@@ -222,23 +242,27 @@ bool ecs_world_entity_has_components(struct ECSWorld* world, EntityHandle entity
     return has;
 }
 
-// Must have locked the component type before calling.
 void* ecs_world_entity_get_component(struct ECSWorld* world, const EntityHandle entity_handle, const ComponentTypeHandle component_type_handle, bool write)
 {
+    struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
+    if (!component_cache)
+    {
+        return NULL;
+    }
+
     void* component = NULL;
     cache_ts_lock(&world->entities, READ);
 
     const struct Entity* entity = cache_get(&world->entities.cache, entity_handle);
-    if(entity)
+    if(entity && entity_lock(entity, READ))
     {
         ComponentHandle component_handle = entity_get_component(entity, component_type_handle);
-        if(component_handle != C_NULL_COMPONENT_HANDLE)
+        if (component_handle != C_NULL_COMPONENT_HANDLE)
         {
-            struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
-            component_cache_lock(component_cache, READ);
             component = component_cache_get_component(component_cache, component_handle, write);
-            component_cache_unlock(component_cache, READ);
         }
+
+        entity_unlock(entity, READ);
     }
 
     cache_ts_unlock(&world->entities, READ);
@@ -257,21 +281,51 @@ void ecs_world_entity_unget_component(struct ECSWorld* world, const EntityHandle
     cache_ts_lock(&world->entities, READ);
     {
         struct Entity* entity = cache_get(&world->entities.cache, entity_handle);
-        if (entity != NULL)
+        if (entity != NULL && entity_lock(entity, READ))
         {
-            entity_lock(entity, READ);
+            ComponentHandle component_handle = entity_get_component(entity, component_type_handle);
+            if (component_handle != C_NULL_COMPONENT_HANDLE)
             {
-                ComponentHandle component_handle = entity_get_component(entity, component_type_handle);
-                if (component_handle != C_NULL_COMPONENT_HANDLE)
-                {
-                    component_cache_unget_component(component_cache, component_handle, write);
-                }
+                component_cache_unget_component(component_cache, component_handle, write);
             }
+
             entity_unlock(entity, READ);
         }
     }
     cache_ts_unlock(&world->entities, READ);
 }
+
+// Component functions
+
+void* ecs_world_get_component(struct ECSWorld* world, const ComponentHandle component_handle, const ComponentTypeHandle component_type_handle, bool write)
+{
+    void* component = NULL;
+
+    if(component_handle != C_NULL_COMPONENT_HANDLE)
+    {
+        struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
+        if (component_cache != NULL)
+        {
+            component = component_cache_get_component(component_cache, component_handle, write);
+        }
+    }
+
+    return component;
+}
+
+void ecs_world_unget_component(struct ECSWorld* world, const ComponentHandle component_handle, const ComponentTypeHandle component_type_handle, bool write)
+{
+    if(component_handle != C_NULL_COMPONENT_HANDLE)
+    {
+        struct ComponentCache* component_cache = cache_map_get_hashed(&world->component_caches, component_type_handle);
+        if(component_cache != NULL)
+        {
+            component_cache_unget_component(component_cache, component_handle, write);
+        }
+    }
+}
+
+// Component type functions
 
 void ecs_world_component_type_register(struct ECSWorld* world, const ComponentTypeHandle component_type_handle, int bytes)
 {
@@ -315,11 +369,22 @@ void ecs_world_component_type_deregister_observer(struct ECSWorld* world, const 
     component_cache_deregister_observer(component_cache, observer);
 }
 
+bool ecs_world_component_type_is_registered(struct ECSWorld* world, const ComponentTypeHandle component_type_handle)
+{
+    return cache_map_get_hashed(&world->component_caches, component_type_handle) != NULL;
+}
+
 void ecs_world_system_register(struct ECSWorld* world, const struct string* system_name, const struct Array* required_components, SystemUpdateFn update_func)
 {
     if(cache_map_get(&world->systems, system_name->buffer, system_name->size))
     {
         return;
+    }
+
+    for(int i = 0; i < array_count(required_components); ++i)
+    {
+        ComponentTypeHandle ct_h = *(ComponentHandle*)array_get(required_components, i);
+        assert(ecs_world_component_type_is_registered(world, ct_h)  && "World does not have component type registered");
     }
 
     struct SystemInitArgs args;

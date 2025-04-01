@@ -27,8 +27,8 @@ static void _setup(void* userstate)
     array_init(&state->entity_handles, sizeof(EntityHandle), 8, NULL, NULL);
     array_init(&state->dummy_component_type_ids, sizeof(ComponentTypeHandle), 10, NULL, NULL);
 
-    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_A_ID, sizeof(struct ECSTestComponentA));
-    ecs_world_component_type_register(state->world, G_TEST_COMPONENT_B_ID, sizeof(struct ECSTestComponentB));
+    ecs_world_component_type_register(state->world, COMPONENT_TYPE_ID(ECSTestComponentA), sizeof(struct ECSTestComponentA));
+    ecs_world_component_type_register(state->world, COMPONENT_TYPE_ID(ECSTestComponentB), sizeof(struct ECSTestComponentB));
 
     for(int i = 0; i < 8; ++i)
     {
@@ -141,35 +141,35 @@ static void _test__entity_add_remove_component(void* userstate)
     EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
     {
-        _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
-        struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+        _add_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
+        struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
         component->x = 7;
         component->y = 1234;
         component->z = 9876;
-        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+        ecs_world_entity_unget_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
     }
 
     {
-        const struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
+        const struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), READ);
         test_component_A_values(component, 7, 1234, 9876);
-        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
-        _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+        ecs_world_entity_unget_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), READ);
+        _remove_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
     }
 
     {
-        _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
-        struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+        _add_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
+        struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
         component->x = 1357;
         component->y = 2468;
         component->z = 3579;
-        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, WRITE);
+        ecs_world_entity_unget_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), WRITE);
     }
 
     {
-        const struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
+        const struct ECSTestComponentA* component = ecs_world_entity_get_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), READ);
         test_component_A_values(component, 1357, 2468, 3579);
-        ecs_world_entity_unget_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID, READ);
-        _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+        ecs_world_entity_unget_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA), READ);
+        _remove_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
     }
 
     ecs_world_destroy_entity(state->world, entity_handle);
@@ -181,22 +181,22 @@ static void _test__entity_add_remove_component_with_resize(void* userstate)
 
     EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
-    _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    _add_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
+    _add_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB));
     //for(int i = 0; i < array_count(&state->dummy_component_type_ids); ++i)
     //{
     //    _add_component_and_test(state->world, entity_handle, *(ComponentTypeHandle*)array_get(&state->dummy_component_type_ids, i));
     //}
 
-    _get_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
-    _get_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    _get_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
+    _get_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB));
     //for(int i = 0; i < array_count(&state->dummy_component_type_ids); ++i)
     //{
     //    _get_component_and_test(state->world, entity_handle, *(ComponentTypeHandle*)array_get(&state->dummy_component_type_ids, i));
     //}
 
-    _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
-    _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_B_ID);
+    _remove_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
+    _remove_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentB));
     //for(int i = array_count(&state->dummy_component_type_ids) - 1; i > -1; --i)
     //{
     //    _remove_component_and_test(state->world, entity_handle, *(ComponentTypeHandle*)array_get(&state->dummy_component_type_ids, i));
@@ -209,16 +209,16 @@ static void _test__entity_component_uniqueness(void* userstate)
 
     EntityHandle entity_handle = ecs_world_create_entity(state->world);
 
-    _add_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    _add_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
 
     int entity_components = ecs_world_entity_components_count(state->world, entity_handle);
-    int components = ecs_world_components_count(state->world, G_TEST_COMPONENT_A_ID);
+    int components = ecs_world_components_count(state->world, COMPONENT_TYPE_ID(ECSTestComponentA));
 
-    ecs_world_entity_add_component(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    ecs_world_entity_add_component(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
     test_assert_equal_int("entity component count", entity_components, ecs_world_entity_components_count(state->world, entity_handle));
-    test_assert_equal_int("ecs components count", components, ecs_world_components_count(state->world, G_TEST_COMPONENT_A_ID));
+    test_assert_equal_int("ecs components count", components, ecs_world_components_count(state->world, COMPONENT_TYPE_ID(ECSTestComponentA)));
 
-    _remove_component_and_test(state->world, entity_handle, G_TEST_COMPONENT_A_ID);
+    _remove_component_and_test(state->world, entity_handle, COMPONENT_TYPE_ID(ECSTestComponentA));
 
     ecs_world_destroy_entity(state->world, entity_handle);
 }

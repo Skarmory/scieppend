@@ -15,19 +15,21 @@ static int _compare_component_lookup_by_type(const void* lhs, const void* rhs)
 
 // ---------- EXTERNAL FUNCS ----------
 
-void entity_init(struct Entity* entity)
+void entity_init(struct Entity* entity, struct ECSWorld* owner)
 {
+    entity->owner = owner;
     array_ts_init(&entity->components, sizeof(struct ComponentLookup), DEFAULT_ENTITY_COMPONENTS_MAX, NULL, NULL);
 }
 
 void entity_uninit(struct Entity* entity)
 {
+    entity->owner = NULL;
     array_ts_uninit(&entity->components);
 }
 
 void entity_init_wrapper(void* entity, [[maybe_unused]] const void* args)
 {
-    entity_init((struct Entity*)entity);
+    entity_init((struct Entity*)entity, (struct ECSWorld*) args);
 }
 
 void entity_uninit_wrapper(void* entity)
