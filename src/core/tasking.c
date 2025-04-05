@@ -312,7 +312,7 @@ void task_await(struct Task* task)
     while(true)
     {
         int status = atomic_load_explicit(&task->status, memory_order_acquire);
-        if (status == TASK_STATUS_SUCCESS || task->status == TASK_STATUS_FAILED)
+        if (status == TASK_STATUS_SUCCESS || status == TASK_STATUS_FAILED)
         {
             break;
         }
