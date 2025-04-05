@@ -157,7 +157,7 @@ void rwlock_set_kill(struct RWLock* lock)
     lock->kill = true;
 }
 
-void rwlock_init_wrapper(void* lock, const void* args)
+void rwlock_init_wrapper(void* lock, [[maybe_unused]] const void* args)
 {
     struct RWLock* _lock = lock;
     rwlock_init(_lock);

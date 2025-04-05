@@ -77,7 +77,7 @@ static void _system_remove_entity(struct System* system, EntityHandle entity_han
     }
 }
 
-static void _system_event_callback([[maybe_unused]] struct Event* sender, void* observer_data, void* event_args)
+static void _system_event_callback([[maybe_unused]] const struct Event* sender, void* observer_data, void* event_args)
 {
     struct System* system = observer_data;
     enum ECSEventType event_type = ((struct ECSEventArgs*)event_args)->event_type;
@@ -134,7 +134,7 @@ void system_init(struct System* system, struct ECSWorld* world, const struct str
 void system_init_wrapper(void* system, const void* args)
 {
     struct System* _system = system;
-    struct SystemInitArgs* _args = args;
+    const struct SystemInitArgs* _args = args;
     system_init(_system, _args->world, _args->name, _args->required_components, _args->update_func);
 }
 

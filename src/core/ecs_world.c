@@ -27,20 +27,6 @@ struct ECSWorld
     struct Event entity_destroyed_event;
 };
 
-// ---------- INTERNAL FUNCTIONS ----------
-
-static int _compare_component_lookup_by_type(const void* lhs, const void* rhs)
-{
-    const struct ComponentLookup* _lhs = lhs;
-    const ComponentTypeHandle* _rhs = rhs;
-    if(_lhs->component_type_handle == *_rhs)
-    {
-        return 0;
-    }
-
-    return -1;
-}
-
 // ---------- EXTERNAL FUNCTIONS ----------
 
 struct ECSWorld* ecs_world_new(void)

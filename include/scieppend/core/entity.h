@@ -32,7 +32,7 @@ const struct Array* entity_get_components(const struct Entity* entity);
 
 void entity_add_component(struct Entity* entity, const ComponentHandle component_handle, const ComponentTypeHandle component_type_handle);
 void entity_remove_component(struct Entity* entity, const ComponentTypeHandle component_type_hanle);
-bool entity_lock(struct Entity* entity, bool write);
-void entity_unlock(struct Entity* entity, bool write);
+bool entity_lock(const struct Entity* entity, bool write);
+void entity_unlock(const struct Entity* entity, bool write);
 
 #endif

@@ -107,12 +107,12 @@ void entity_remove_component(struct Entity* entity, const ComponentTypeHandle co
     array_ts_find_and_remove(&entity->components, &component_type_handle, &_compare_component_lookup_by_type);
 }
 
-bool entity_lock(struct Entity* entity, bool write)
+bool entity_lock(const struct Entity* entity, bool write)
 {
     return array_ts_lock(&entity->components, write);
 }
 
-void entity_unlock(struct Entity* entity, bool write)
+void entity_unlock(const struct Entity* entity, bool write)
 {
     array_ts_unlock(&entity->components, write);
 }

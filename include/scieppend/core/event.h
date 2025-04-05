@@ -16,10 +16,10 @@ struct Event* event_new(void);
 void event_free(struct Event* event);
 void event_init(struct Event* event);
 void event_uninit(struct Event* event);
-int  event_observer_count(struct Event* event);
+int  event_observer_count(const struct Event* event);
 void event_register_observer(struct Event* event, ObserverHandle obs_handle);
 void event_deregister_observer(struct Event* event, ObserverHandle obs_handle);
-void event_send(struct Event* event, void* event_args);
+void event_send(const struct Event* event, void* event_args);
 
 void eventing_init(void);
 void eventing_uninit(void);

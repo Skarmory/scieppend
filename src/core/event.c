@@ -62,7 +62,7 @@ void event_uninit(struct Event* event)
     array_ts_uninit(&event->observers);
 }
 
-int event_observer_count(struct Event* event)
+int event_observer_count(const struct Event* event)
 {
     return array_ts_count(&event->observers);
 }
@@ -81,7 +81,7 @@ void event_deregister_observer(struct Event* event, ObserverHandle obs_handle)
     }
 }
 
-void event_send(struct Event* event, void* event_args)
+void event_send(const struct Event* event, void* event_args)
 {
     for(int i = 0; i < array_ts_count(&event->observers); ++i)
     {

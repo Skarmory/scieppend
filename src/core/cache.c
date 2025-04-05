@@ -48,7 +48,7 @@ static int _get_item_offset(int item_size, int handle)
 }
 
 // Returns pointer to the item in the cache items array
-static void* _get_item(struct Cache* cache, int handle)
+static void* _get_item(const struct Cache* cache, int handle)
 {
     return (char*)cache->items + _get_item_offset(cache->item_size, handle);
 }
@@ -129,7 +129,7 @@ static bool _check_valid(int handle)
 }
 
 // Checks whether the handle passed in by other code matches the handle the cache is expecting
-static bool _check_handle(struct Cache* cache, int handle)
+static bool _check_handle(const struct Cache* cache, int handle)
 {
     int idx = _get_idx(handle);
 

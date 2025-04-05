@@ -3,7 +3,7 @@
 
 struct Event;
 
-typedef void(*event_callback_fn)(struct Event* sender, void* obs_data, void* event_args);
+typedef void(*event_callback_fn)(const struct Event* sender, void* obs_data, void* event_args);
 typedef int ObserverHandle;
 
 #endif

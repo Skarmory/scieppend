@@ -154,7 +154,7 @@ int array_find(const struct Array* array, const void* item, compare_fn comp_func
     return -1;
 }
 
-bool array_find_and_remove(const struct Array* array, const void* item, compare_fn comp_func)
+bool array_find_and_remove(struct Array* array, const void* item, compare_fn comp_func)
 {
     int idx = array_find(array, item, comp_func);
     if(idx != -1)
