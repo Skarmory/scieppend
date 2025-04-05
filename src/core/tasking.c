@@ -1,5 +1,6 @@
 #include "scieppend/core/tasking.h"
 
+#include "scieppend/core/concurrent/futex.h"
 #include "scieppend/core/list.h"
 #include "scieppend/core/log.h"
 
@@ -18,12 +19,10 @@
 
 struct _Thread;
 static void _thread_init(struct _Thread* thread, struct Tasker* tasker);
-static void _thread_free(struct _Thread* thread);
 static void _thread_start_task(struct _Thread* thread);
 static void _thread_execute_task(struct _Thread* thread);
 static void _thread_end_task(struct _Thread* thread);
 static void _thread_free_task(struct _Thread* thread);
-static void _thread_stop(struct _Thread* thread);
 static int  _thread_update(void* thread);
 
 // STRUCTS
@@ -47,13 +46,13 @@ struct _Thread
 
 struct Tasker
 {
-    atomic_int     pending_task_count;
-    atomic_int     executing_task_count;
+    atomic_int     task_count;
     atomic_bool    kill;
 
     struct _Thread worker_threads[C_MAX_THREADS];
-    mtx_t          pending_list_lock;
+    mtx_t          tasker_lock;
     cnd_t          work_signal;
+    cnd_t          task_complete_signal;
 
     struct List    pending_list;
 };
@@ -81,35 +80,22 @@ static void _thread_init(struct _Thread* thread, struct Tasker* tasker)
 }
 
 /**
- * Stop a worker thread and join.
- */
-static void _thread_free(struct _Thread* thread)
-{
-    _thread_stop(thread);
-
-    thrd_join(thread->thread, NULL);
-}
-
-/**
  * SHOULD ONLY BE CALLED BY A WORKER THREAD
  * Thread should have locked the pending list mutex at this point.
- * Pop task from list and set thread state
+ * Pop task from list and set thread state to executing.
  */
-static void _thread_start_task(struct _Thread* thread)
+static inline void _thread_start_task(struct _Thread* thread)
 {
     thread->task = list_pop_head(&thread->tasker->pending_list);
     thread->state = THREAD_STATE_EXECUTING;
-    --thread->tasker->pending_task_count;
 }
 
 /**
  * SHOULD ONLY BE CALLED BY A WORKER THREAD
  * Loops executing the given task until task returns a non-executing state.
  */
-static void _thread_execute_task(struct _Thread* thread)
+static inline void _thread_execute_task(struct _Thread* thread)
 {
-    ++thread->tasker->executing_task_count;
-
     thread->task->status = TASK_STATUS_EXECUTING;
     while(thread->task->status == TASK_STATUS_EXECUTING)
     {
@@ -129,7 +115,9 @@ static void _thread_free_task(struct _Thread* thread)
 
 /**
  * SHOULD ONLY BE CALLED BY A WORKER THREAD
- * Add a completed task to the tasker's completed task list.
+ * Call the task's callback, if it has one.
+ * Set the thread state to idle and signal the tasker that a task has been completed.
+ * Wakes the futex that might be waited upon.
  */
 static void _thread_end_task(struct _Thread* thread)
 {
@@ -140,52 +128,41 @@ static void _thread_end_task(struct _Thread* thread)
         thread->task->cb_func(thread->task->args);
     }
 
-    --thread->tasker->executing_task_count;
-
+    --thread->tasker->task_count;
+    futex_wake(&thread->task->status, 1);
     thread->task = NULL;
     thread->state = THREAD_STATE_IDLE;
-}
 
-/**
- * SHOULD ONLY BE CALLED BY THE TASKER
- * Signal a thread to stop.
- */
-static void _thread_stop(struct _Thread* thread)
-{
-    while(thread->state != THREAD_STATE_STOPPED)
-    {
-        cnd_signal(&thread->tasker->work_signal);
-    }
+    cnd_signal(&thread->tasker->task_complete_signal);
 }
 
 /**
  * Main loop for a worker thread.
- * Lock the pending list, if there are tasks pop the top and begin.
- * If no tasks, wait on signal from the tasker that new tasks are added.
+ * Lock and check for tasks. If no tasks, wait on signal from the tasker that new tasks are added.
  * Atomic compare on state swaps in case the tasker stops the thread.
  */
 static int _thread_update(void* t)
 {
     struct _Thread* thread = t;
-    while(!thread->tasker->kill)
+    while(!atomic_load_explicit(&thread->tasker->kill, memory_order_acquire))
     {
-        mtx_lock(&thread->tasker->pending_list_lock);
+        mtx_lock(&thread->tasker->tasker_lock);
 
-        while(thread->tasker->pending_task_count == 0)
+        while(thread->tasker->task_count == 0)
         {
             // No pending tasks, wait for work signal
-            cnd_wait(&thread->tasker->work_signal, &thread->tasker->pending_list_lock);
+            cnd_wait(&thread->tasker->work_signal, &thread->tasker->tasker_lock);
 
-            if(thread->tasker->kill)
+            if(atomic_load_explicit(&thread->tasker->kill, memory_order_acquire))
             {
-                mtx_unlock(&thread->tasker->pending_list_lock);
+                mtx_unlock(&thread->tasker->tasker_lock);
                 goto thread_update_exit_label;
             }
         }
 
         _thread_start_task(thread);
 
-        mtx_unlock(&thread->tasker->pending_list_lock);
+        mtx_unlock(&thread->tasker->tasker_lock);
 
         // Check still idle, if so set executing, else stopped so break
         if(thread->tasker->kill)
@@ -208,13 +185,13 @@ thread_update_exit_label:
 struct Tasker* tasker_new(void)
 {
     struct Tasker* tasker = malloc(sizeof(struct Tasker));
-    tasker->pending_task_count = 0;
-    tasker->executing_task_count = 0;
+    tasker->task_count = 0;
     tasker->kill = false;
     list_init(&tasker->pending_list);
 
-    mtx_init(&tasker->pending_list_lock, mtx_plain);
+    mtx_init(&tasker->tasker_lock, mtx_plain);
     cnd_init(&tasker->work_signal);
+    cnd_init(&tasker->task_complete_signal);
 
     for(int i = 0; i < C_MAX_THREADS; ++i)
     {
@@ -227,14 +204,18 @@ struct Tasker* tasker_new(void)
 
 void tasker_free(struct Tasker* tasker)
 {
-    tasker->kill = true;
+    atomic_store_explicit(&tasker->kill, true, memory_order_release);
+
+    mtx_lock(&tasker->tasker_lock);
+    cnd_broadcast(&tasker->work_signal);
+    mtx_unlock(&tasker->tasker_lock);
 
     for(int tidx = 0; tidx < C_MAX_THREADS; ++tidx)
     {
-        _thread_free(&tasker->worker_threads[tidx]);
+        thrd_join((&tasker->worker_threads[tidx])->thread, NULL);
     }
 
-    mtx_destroy(&tasker->pending_list_lock);
+    mtx_destroy(&tasker->tasker_lock);
     cnd_destroy(&tasker->work_signal);
 
     list_free_data(&tasker->pending_list, &task_free_wrapper);
@@ -250,12 +231,12 @@ bool tasker_add_task(struct Tasker* tasker, struct Task* task)
     }
 
     // Add task to pending list
-    mtx_lock(&tasker->pending_list_lock);
+    mtx_lock(&tasker->tasker_lock);
     {
         list_add(&tasker->pending_list, task);
-        ++tasker->pending_task_count;
+        ++tasker->task_count;
     }
-    mtx_unlock(&tasker->pending_list_lock);
+    mtx_unlock(&tasker->tasker_lock);
 
     cnd_signal(&tasker->work_signal);
 
@@ -264,29 +245,19 @@ bool tasker_add_task(struct Tasker* tasker, struct Task* task)
 
 void tasker_sync(struct Tasker* tasker)
 {
-    while(tasker->pending_task_count > 0 || tasker->executing_task_count > 0)
+    mtx_lock(&tasker->tasker_lock);
+    while(tasker->task_count > 0)
     {
-        // Wait for tasker idle
-        thrd_yield();
+        cnd_wait(&tasker->task_complete_signal, &tasker->tasker_lock);
     }
-}
-
-bool tasker_has_pending_tasks(struct Tasker* tasker)
-{
-    return tasker->pending_task_count != 0;
-}
-
-bool tasker_has_executing_tasks(struct Tasker* tasker)
-{
-    return tasker->executing_task_count != 0;
+    mtx_unlock(&tasker->tasker_lock);
 }
 
 void tasker_log_state(struct Tasker* tasker)
 {
     log_msg(LOG_DEBUG, "Tasker state:");
     log_push_indent(LOG_ID_DEBUG);
-    log_format_msg(LOG_DEBUG, "Pending tasks: %d", tasker->pending_task_count);
-    log_format_msg(LOG_DEBUG, "Executing tasks: %d", tasker->executing_task_count);
+    log_format_msg(LOG_DEBUG, "Task Count: %d", tasker->task_count);
 
     log_msg(LOG_DEBUG, "Threads:");
     log_push_indent(LOG_ID_DEBUG);
@@ -338,9 +309,15 @@ bool task_is_finished(struct Task* task)
 
 void task_await(struct Task* task)
 {
-    while(!task_is_finished(task))
+    while(true)
     {
-        thrd_yield();
+        int status = atomic_load_explicit(&task->status, memory_order_acquire);
+        if (status == TASK_STATUS_SUCCESS || task->status == TASK_STATUS_FAILED)
+        {
+            break;
+        }
+
+        futex_wait(&task->status, TASK_STATUS_EXECUTING);
     }
 }
 

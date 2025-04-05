@@ -39,14 +39,6 @@ bool tasker_add_task(struct Tasker* tasker, struct Task* task);
  */
 void tasker_sync(struct Tasker* tasker);
 
-/* Return true if tasker has any tasks that it has not started yet.
- */
-bool tasker_has_pending_tasks(struct Tasker* tasker);
-
-/* Return true if tasker has any tasks that it is currently executing.
- */
-bool tasker_has_executing_tasks(struct Tasker* tasker);
-
 /* Log tasker state for debugging purposes.
  */
 void tasker_log_state(struct Tasker* tasker);

@@ -4,7 +4,8 @@ CFLAGS+=-Iinclude
 LDFLAGS=-lm
 NAME=libscieppend.so
 
-SRCS=$(wildcard src/core/*.c)
+SRC_DIRS=src/core src/core/concurrent
+SRCS=$(foreach dir, $(SRC_DIRS), $(wildcard $(dir)/*.c))
 OBJS=$(SRCS:.c=.o)
 DEPS=$(SRCS:.c=.d)
 
