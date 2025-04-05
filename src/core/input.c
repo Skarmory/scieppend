@@ -73,12 +73,14 @@ bool input_get_key(enum KeyCode key)
 
 void input_poll(void)
 {
+    term_set_blocking(false);
     cache_map_clear(&_input_manager.pressed);
     enum KeyCode kc = _poll();
     if(kc != KEYCODE_UNKNOWN)
     {
         cache_map_add(&_input_manager.pressed, &kc, sizeof(enum KeyCode), &kc);
     }
+    term_set_blocking(true);
 }
 
 void input_init(void)

@@ -210,7 +210,7 @@ void term_init(void)
 
     t.c_lflag &= (~ECHO & ~ICANON);
     tcsetattr(1, TCSANOW, &t);
-    term_set_blocking(false);
+    term_set_blocking(true);
 
     term_resize();
     term_clear();
