@@ -48,10 +48,6 @@ void term_set_echo(bool state);
  */
 void term_set_canon(bool state);
 
-/* Set whether the terminal blocks on read.
- */
-void term_set_blocking(bool state);
-
 /* Set sigint callback handler function.
  */
 void term_set_sigint_callback(void(*sig)(int));
@@ -71,14 +67,6 @@ void term_clear_area(int x, int y, int w, int h);
 /* Writes to and flushes the terminal display buffer.
  */
 void term_refresh(void);
-
-/* Read into buffer.
- */
-void term_getch(char* buffer_out, int size);
-
-/* Blocking input, waits for any input but discards it.
- */
-void term_wait_on_input(void);
 
 /* Move the cursor to given x y position.
  */

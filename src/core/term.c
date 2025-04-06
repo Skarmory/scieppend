@@ -4,7 +4,6 @@
 #include "scieppend/core/colour.h"
 #include "scieppend/core/log.h"
 
-#include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -210,7 +209,6 @@ void term_init(void)
 
     t.c_lflag &= (~ECHO & ~ICANON);
     tcsetattr(1, TCSANOW, &t);
-    term_set_blocking(true);
 
     term_resize();
     term_clear();
@@ -271,12 +269,6 @@ void term_set_canon(bool state)
     struct termios t;
     t.c_lflag = state ? ICANON : ~ICANON;
     tcsetattr(1, TCSANOW, &t);
-}
-
-void term_set_blocking(bool state)
-{
-    int flags = fcntl(0 , F_GETFL, 0);
-    fcntl(0, F_SETFL, flags | (state ? ~O_NONBLOCK : O_NONBLOCK));
 }
 
 void term_set_sigint_callback(void(*handler)(int))
@@ -405,18 +397,6 @@ void term_refresh(void)
     // Reset term attributes
     _writef(C_DEFAULT);
     _flush();
-}
-
-void term_getch(char* buffer_out, int size)
-{
-    memset(buffer_out, '\0', size);
-    read(1, buffer_out, size);
-}
-
-void term_wait_on_input(void)
-{
-    char c;
-    read(1, &c, 1);
 }
 
 void term_move_cursor(int x, int y)
